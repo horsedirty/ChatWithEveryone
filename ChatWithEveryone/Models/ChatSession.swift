@@ -5,6 +5,7 @@ struct ChatSession: Identifiable, Codable, Equatable {
     var title: String
     var messages: [Message] = []
     var providerId: UUID?
+    var selectedModel: String?
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
 
@@ -27,9 +28,8 @@ struct ChatSession: Identifiable, Codable, Equatable {
     }
 
     mutating func appendToLastAssistantMessage(_ chunk: String) {
-        if let index = messages.lastIndex(where: { $0.role == .assistant }) {
-            messages[index].content += chunk
-            messages[index].isStreaming = true
+        if let last = messages.last, last.role == .assistant, last.isStreaming {
+            messages[messages.count - 1].content += chunk
             updatedAt = Date()
         } else {
             let msg = Message.assistant(chunk, isStreaming: true)

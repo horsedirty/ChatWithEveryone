@@ -99,8 +99,35 @@ struct MainChatView: View {
         }
     }
 
+    var modelPickerView: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "cpu")
+                .foregroundColor(.secondary)
+                .font(.caption)
+            Picker("模型", selection: Binding(
+                get: { viewModel.currentModel },
+                set: { viewModel.updateSessionModel($0) }
+            )) {
+                ForEach(viewModel.availableModelsForCurrentProvider, id: \.self) { model in
+                    Text(model).tag(model)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .font(.caption)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
     var chatContentView: some View {
         VStack(spacing: 0) {
+            if viewModel.showModelPicker {
+                modelPickerView
+            }
+
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0) {

@@ -24,6 +24,25 @@ enum APIProviderType: String, Codable, CaseIterable {
         }
     }
 
+    var availableModels: [String] {
+        switch self {
+        case .deepseek:
+            return ["deepseek-chat", "deepseek-reasoner"]
+        case .siliconflow:
+            return [
+                "deepseek-ai/DeepSeek-V3",
+                "deepseek-ai/DeepSeek-R1",
+                "Qwen/Qwen2.5-72B-Instruct",
+                "Qwen/QwQ-32B",
+                "meta-llama/Llama-3.1-405B-Instruct"
+            ]
+        case .aiapi:
+            return ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo", "claude-3-5-sonnet", "gemini-2.0-flash"]
+        case .custom:
+            return []
+        }
+    }
+
     var chatCompletionPath: String {
         return "/chat/completions"
     }

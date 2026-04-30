@@ -28,6 +28,28 @@ struct FloatingChatView: View {
 
             Divider()
 
+            if viewModel.showModelPicker {
+                HStack(spacing: 6) {
+                    Image(systemName: "cpu")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                    Picker("模型", selection: Binding(
+                        get: { viewModel.currentModel },
+                        set: { viewModel.updateSessionModel($0) }
+                    )) {
+                        ForEach(viewModel.availableModelsForCurrentProvider, id: \.self) { model in
+                            Text(model).tag(model)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .font(.caption)
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 4)
+            }
+
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0) {

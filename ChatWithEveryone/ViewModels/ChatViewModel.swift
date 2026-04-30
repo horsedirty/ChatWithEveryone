@@ -25,6 +25,21 @@ final class ChatViewModel: ObservableObject {
         return providers.first(where: { $0.id == pid })
     }
 
+    var currentModel: String {
+        if let sessionModel = selectedSession?.selectedModel, !sessionModel.isEmpty {
+            return sessionModel
+        }
+        return activeProvider?.model ?? ""
+    }
+
+    var availableModelsForCurrentProvider: [String] {
+        activeProvider?.providerType.availableModels ?? []
+    }
+
+    var showModelPicker: Bool {
+        !availableModelsForCurrentProvider.isEmpty
+    }
+
     init() {
         load()
     }
@@ -133,14 +148,19 @@ final class ChatViewModel: ObservableObject {
         errorMessage = nil
 
         let msgs = sessions[sessionIndex].chatAPIMessages
+        let model = sessions[sessionIndex].selectedModel ?? provider.model
+
+        var providerWithModel = provider
+        providerWithModel.model = model
 
         APIService.shared.sendMessage(
-            provider: provider,
+            provider: providerWithModel,
             messages: msgs,
             streaming: true,
             onChunk: { [weak self] chunk in
                 guard let self else { return }
-                DispatchQueue.main.async {
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
                     if self.sessions.indices.contains(sessionIndex) {
                         self.sessions[sessionIndex].appendToLastAssistantMessage(chunk)
                     }
@@ -148,7 +168,8 @@ final class ChatViewModel: ObservableObject {
             },
             onComplete: { [weak self] result in
                 guard let self else { return }
-                DispatchQueue.main.async {
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
                     self.isSending = false
                     switch result {
                     case .success:
@@ -183,5 +204,12 @@ final class ChatViewModel: ObservableObject {
 
     func resetError() {
         errorMessage = nil
+    }
+
+    func updateSessionModel(_ model: String) {
+        guard let sessionId = selectedSessionId,
+              let index = sessions.firstIndex(where: { $0.id == sessionId }) else { return }
+        sessions[index].selectedModel = model
+        save()
     }
 }
