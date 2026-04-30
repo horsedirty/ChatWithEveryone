@@ -11,6 +11,14 @@ struct ChatSession: Identifiable, Codable, Equatable {
 
     var lastMessage: Message? { messages.last }
 
+    var totalTokens: Int {
+        messages.reduce(0) { $0 + $1.tokenCount }
+    }
+
+    var contextWindowSize: Int {
+        128000
+    }
+
     mutating func addMessage(_ message: Message) {
         messages.append(message)
         updatedAt = Date()
@@ -36,6 +44,20 @@ struct ChatSession: Identifiable, Codable, Equatable {
             messages.append(msg)
             updatedAt = Date()
         }
+    }
+
+    mutating func appendReasoningContent(_ chunk: String) {
+        if let last = messages.last, last.role == .assistant, last.isStreaming {
+            messages[messages.count - 1].reasoningContent += chunk
+            updatedAt = Date()
+        }
+    }
+
+    mutating func finishLastAssistantStreaming() {
+        guard let last = messages.last, last.role == .assistant, last.isStreaming else { return }
+        messages[messages.count - 1].isStreaming = false
+        messages[messages.count - 1].thinkingStartTime = nil
+        updatedAt = Date()
     }
 
     var chatAPIMessages: [[String: Any]] {

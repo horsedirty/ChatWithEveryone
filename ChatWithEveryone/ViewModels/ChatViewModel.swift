@@ -157,6 +157,15 @@ final class ChatViewModel: ObservableObject {
             provider: providerWithModel,
             messages: msgs,
             streaming: true,
+            onReasoningChunk: { [weak self] chunk in
+                guard let self else { return }
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    if self.sessions.indices.contains(sessionIndex) {
+                        self.sessions[sessionIndex].appendReasoningContent(chunk)
+                    }
+                }
+            },
             onChunk: { [weak self] chunk in
                 guard let self else { return }
                 Task { @MainActor [weak self] in
@@ -173,6 +182,9 @@ final class ChatViewModel: ObservableObject {
                     self.isSending = false
                     switch result {
                     case .success:
+                        if self.sessions.indices.contains(sessionIndex) {
+                            self.sessions[sessionIndex].finishLastAssistantStreaming()
+                        }
                         self.save()
                     case .failure(let error):
                         self.errorMessage = error.localizedDescription

@@ -122,6 +122,37 @@ struct MainChatView: View {
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
+    var contextProgressView: some View {
+        let session = viewModel.selectedSession
+        let tokens = session?.totalTokens ?? 0
+        let windowSize = session?.contextWindowSize ?? 128000
+        let fraction = min(Double(tokens) / Double(windowSize), 1.0)
+
+        return HStack(spacing: 6) {
+            Image(systemName: "chart.bar.fill")
+                .font(.system(size: 9))
+                .foregroundColor(fraction > 0.8 ? .orange : .secondary)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.secondary.opacity(0.15))
+                        .frame(height: 4)
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(fraction > 0.8 ? Color.orange : fraction > 0.5 ? Color.yellow : Color.accentColor)
+                        .frame(width: max(geo.size.width * fraction, 4), height: 4)
+                        .animation(.easeInOut(duration: 0.3), value: fraction)
+                }
+            }
+            .frame(height: 4)
+            Text("\(tokens)/\(windowSize/1000)k")
+                .font(.system(size: 9))
+                .foregroundColor(.secondary)
+                .monospacedDigit()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
+    }
+
     var chatContentView: some View {
         VStack(spacing: 0) {
             if viewModel.showModelPicker {
@@ -165,6 +196,8 @@ struct MainChatView: View {
                 .padding(.vertical, 6)
                 .background(Color.red.opacity(0.1))
             }
+
+            contextProgressView
 
             ImagePickerView(viewModel: viewModel)
 

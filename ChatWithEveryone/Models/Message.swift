@@ -16,18 +16,33 @@ struct Message: Identifiable, Codable, Equatable {
     var id = UUID()
     var role: MessageRole
     var content: String
+    var reasoningContent: String = ""
     var images: [ImageAttachment] = []
     var timestamp: Date = Date()
     var isStreaming: Bool = false
+    var thinkingStartTime: Date? = nil
 
     var hasImages: Bool { !images.isEmpty }
+
+    var hasReasoning: Bool { !reasoningContent.isEmpty }
+
+    var tokenCount: Int {
+        var count = 0
+        for ch in content {
+            count += ch.isASCII ? 1 : 2
+        }
+        for ch in reasoningContent {
+            count += ch.isASCII ? 1 : 2
+        }
+        return max(count / 4, 1)
+    }
 
     static func user(_ content: String, images: [ImageAttachment] = []) -> Message {
         Message(role: .user, content: content, images: images)
     }
 
     static func assistant(_ content: String, isStreaming: Bool = false) -> Message {
-        Message(role: .assistant, content: content, isStreaming: isStreaming)
+        Message(role: .assistant, content: content, isStreaming: isStreaming, thinkingStartTime: isStreaming ? Date() : nil)
     }
 
     static func system(_ content: String) -> Message {

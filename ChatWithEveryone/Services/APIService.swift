@@ -29,6 +29,7 @@ struct ChatCompletionChunk: Codable {
         struct Delta: Codable {
             let content: String?
             let role: String?
+            let reasoning_content: String?
         }
         let delta: Delta?
         let index: Int?
@@ -68,6 +69,7 @@ final class APIService: @unchecked Sendable {
         provider: APIProvider,
         messages: [[String: Any]],
         streaming: Bool = true,
+        onReasoningChunk: (@Sendable (String) -> Void)? = nil,
         onChunk: (@Sendable (String) -> Void)?,
         onComplete: (@Sendable (Result<String, APIError>) -> Void)?
     ) {
@@ -101,7 +103,7 @@ final class APIService: @unchecked Sendable {
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
         if streaming {
-            performStreamRequest(request, onChunk: onChunk, onComplete: onComplete)
+            performStreamRequest(request, onReasoningChunk: onReasoningChunk, onChunk: onChunk, onComplete: onComplete)
         } else {
             performNonStreamRequest(request, onComplete: onComplete)
         }
@@ -109,6 +111,7 @@ final class APIService: @unchecked Sendable {
 
     private func performStreamRequest(
         _ request: URLRequest,
+        onReasoningChunk: (@Sendable (String) -> Void)?,
         onChunk: (@Sendable (String) -> Void)?,
         onComplete: (@Sendable (Result<String, APIError>) -> Void)?
     ) {
@@ -139,6 +142,7 @@ final class APIService: @unchecked Sendable {
             let lines = text.components(separatedBy: "\n").filter { $0.hasPrefix("data: ") }
 
             var fullContent = ""
+            var streamedContent = false
 
             for line in lines {
                 let jsonString = String(line.dropFirst(6))
@@ -147,8 +151,12 @@ final class APIService: @unchecked Sendable {
 
                 do {
                     let chunk = try self.decoder.decode(ChatCompletionChunk.self, from: jsonData)
+                    if let reasoning = chunk.choices?.first?.delta?.reasoning_content {
+                        DispatchQueue.main.async { onReasoningChunk?(reasoning) }
+                    }
                     if let content = chunk.choices?.first?.delta?.content {
                         fullContent += content
+                        streamedContent = true
                         DispatchQueue.main.async { onChunk?(content) }
                     }
                 } catch {
@@ -157,7 +165,7 @@ final class APIService: @unchecked Sendable {
             }
 
             DispatchQueue.main.async {
-                if fullContent.isEmpty {
+                if !streamedContent && fullContent.isEmpty {
                     let errorMsg = APIService.extractErrorMessage(from: text) ?? "空响应"
                     onComplete?(.failure(.streamError(errorMsg)))
                 } else {
