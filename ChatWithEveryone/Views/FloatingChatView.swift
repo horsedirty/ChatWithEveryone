@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct FloatingChatView: View {
     @ObservedObject var viewModel: ChatViewModel
     var onDismiss: (() -> Void)?
+    var onOpenMainWindow: (() -> Void)?
 
     @State private var showFileImporter = false
     @State private var showScreenCaptureSheet = false
@@ -15,6 +16,14 @@ struct FloatingChatView: View {
                 Text("ChatWithEveryone")
                     .font(.headline)
                 Spacer()
+                Button {
+                    onOpenMainWindow?()
+                } label: {
+                    Image(systemName: "rectangle.expand.vertical")
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("切换到主窗口")
                 Button {
                     onDismiss?()
                 } label: {
@@ -37,8 +46,8 @@ struct FloatingChatView: View {
                         get: { viewModel.currentModel },
                         set: { viewModel.updateSessionModel($0) }
                     )) {
-                        ForEach(viewModel.availableModelsForCurrentProvider, id: \.self) { model in
-                            Text(model).tag(model)
+                        ForEach(viewModel.availableModelsWithLabels, id: \.model) { item in
+                            Text(item.label).tag(item.model)
                         }
                     }
                     .pickerStyle(.menu)
@@ -154,16 +163,42 @@ struct FloatingChatView: View {
 
             ImagePickerView(viewModel: viewModel)
 
+            if !viewModel.attachedFileNames.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(viewModel.attachedFileNames, id: \.self) { name in
+                            HStack(spacing: 4) {
+                                Image(systemName: "doc.text")
+                                    .font(.caption)
+                                Text(name)
+                                    .font(.caption)
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.accentColor.opacity(0.1))
+                            .cornerRadius(6)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Color.accentColor.opacity(0.3), lineWidth: 1)
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                }
+            }
+
             HStack(alignment: .bottom, spacing: 6) {
                 HStack(spacing: 2) {
                     Button {
                         showFileImporter = true
                     } label: {
-                        Image(systemName: "photo.badge.plus")
+                        Image(systemName: "doc.badge.plus")
                             .font(.body)
                     }
                     .buttonStyle(.plain)
-                    .help("添加图片")
+                    .help("添加图片/文件")
 
                     Button {
                         showScreenCaptureSheet = true
@@ -209,13 +244,18 @@ struct FloatingChatView: View {
         .frame(minWidth: 440, minHeight: 500)
         .fileImporter(
             isPresented: $showFileImporter,
-            allowedContentTypes: [.image],
+            allowedContentTypes: [.image, .text, .plainText, UTType(filenameExtension: "md") ?? .text],
             allowsMultipleSelection: true
         ) { result in
             switch result {
             case .success(let urls):
                 for url in urls {
-                    viewModel.addImage(from: url)
+                    let ext = url.pathExtension.lowercased()
+                    if ["txt", "md", "markdown"].contains(ext) {
+                        viewModel.addTextFile(from: url)
+                    } else {
+                        viewModel.addImage(from: url)
+                    }
                 }
             case .failure:
                 break

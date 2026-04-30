@@ -48,10 +48,12 @@ struct ChatSession: Identifiable, Codable, Equatable {
     }
 
     mutating func appendReasoningContent(_ chunk: String) {
-        if let last = messages.last, last.role == .assistant, last.isStreaming {
-            messages[messages.count - 1].reasoningContent += chunk
-            updatedAt = Date()
+        if !(messages.last?.role == .assistant && messages.last?.isStreaming == true) {
+            let msg = Message.assistant("", isStreaming: true)
+            messages.append(msg)
         }
+        messages[messages.count - 1].reasoningContent += chunk
+        updatedAt = Date()
     }
 
     mutating func finishLastAssistantStreaming() {

@@ -148,8 +148,8 @@ struct MainChatView: View {
                 get: { viewModel.currentModel },
                 set: { viewModel.updateSessionModel($0) }
             )) {
-                ForEach(viewModel.availableModelsForCurrentProvider, id: \.self) { model in
-                    Text(model).tag(model)
+                ForEach(viewModel.availableModelsWithLabels, id: \.model) { item in
+                    Text(item.label).tag(item.model)
                 }
             }
             .pickerStyle(.menu)
@@ -274,16 +274,42 @@ struct MainChatView: View {
 
     var inputBarView: some View {
         VStack(spacing: 0) {
+            if !viewModel.attachedFileNames.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(viewModel.attachedFileNames, id: \.self) { name in
+                            HStack(spacing: 4) {
+                                Image(systemName: "doc.text")
+                                    .font(.caption)
+                                Text(name)
+                                    .font(.caption)
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.accentColor.opacity(0.1))
+                            .cornerRadius(6)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Color.accentColor.opacity(0.3), lineWidth: 1)
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                }
+            }
+
             Divider()
             HStack(alignment: .bottom, spacing: 8) {
                 HStack(spacing: 4) {
                     Button {
                         showFileImporter = true
                     } label: {
-                        Image(systemName: "photo.badge.plus")
+                        Image(systemName: "doc.badge.plus")
                     }
                     .buttonStyle(.plain)
-                    .help("添加图片")
+                    .help("添加图片/文件")
 
                     Button {
                         showScreenCaptureSheet = true
@@ -327,13 +353,18 @@ struct MainChatView: View {
         }
         .fileImporter(
             isPresented: $showFileImporter,
-            allowedContentTypes: [.image],
+            allowedContentTypes: [.image, .text, .plainText, UTType(filenameExtension: "md") ?? .text],
             allowsMultipleSelection: true
         ) { result in
             switch result {
             case .success(let urls):
                 for url in urls {
-                    viewModel.addImage(from: url)
+                    let ext = url.pathExtension.lowercased()
+                    if ["txt", "md", "markdown"].contains(ext) {
+                        viewModel.addTextFile(from: url)
+                    } else {
+                        viewModel.addImage(from: url)
+                    }
                 }
             case .failure:
                 break

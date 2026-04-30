@@ -12,6 +12,7 @@ final class ChatViewModel: ObservableObject {
     @Published var isSending = false
     @Published var errorMessage: String?
     @Published var attachedImages: [ImageAttachment] = []
+    @Published var attachedFileNames: [String] = []
     @Published var showSettings = false
     @Published var showScreenCapturePicker = false
 
@@ -38,6 +39,17 @@ final class ChatViewModel: ObservableObject {
 
     var showModelPicker: Bool {
         !availableModelsForCurrentProvider.isEmpty
+    }
+
+    var providerName: String {
+        activeProvider?.name ?? activeProvider?.providerType.rawValue ?? ""
+    }
+
+    var availableModelsWithLabels: [(label: String, model: String)] {
+        let prefix = providerName
+        return availableModelsForCurrentProvider.map { model in
+            (label: "\(prefix) - \(model)", model: model)
+        }
     }
 
     init() {
@@ -85,6 +97,20 @@ final class ChatViewModel: ObservableObject {
         attachedImages.append(attachment)
     }
 
+    func addTextFile(from url: URL) {
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return }
+        let filename = url.lastPathComponent
+        attachedFileNames.append(filename)
+        let textBlock = """
+
+        --- \(filename) ---
+        \(content)
+        --- 文件结束 ---
+
+        """
+        inputText += textBlock
+    }
+
     func addImage(from nsImage: NSImage) {
         guard let tiffData = nsImage.tiffRepresentation,
               let bitmap = NSBitmapImageRep(data: tiffData),
@@ -108,6 +134,10 @@ final class ChatViewModel: ObservableObject {
         attachedImages.removeAll()
     }
 
+    func clearFiles() {
+        attachedFileNames.removeAll()
+    }
+
     func sendMessage() {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty || !attachedImages.isEmpty else { return }
@@ -120,26 +150,24 @@ final class ChatViewModel: ObservableObject {
             providers = [provider]
         }
 
+        inputText = ""
+        let imagesToSend = attachedImages
+        clearImages()
+        clearFiles()
+
         guard let index = sessions.firstIndex(where: { $0.id == selectedSessionId }) else {
             let newSession = ChatSession(title: "新对话", providerId: provider.id)
             sessions.insert(newSession, at: 0)
             selectedSessionId = newSession.id
-            let userMsg = Message.user(text, images: attachedImages)
+            let userMsg = Message.user(text, images: imagesToSend)
             sessions[0].addMessage(userMsg)
-            inputText = ""
-            let imagesToSend = attachedImages
-            clearImages()
             performSend(provider: provider, sessionIndex: 0, userImages: imagesToSend)
             return
         }
 
-        let userMsg = Message.user(text, images: attachedImages)
+        let userMsg = Message.user(text, images: imagesToSend)
         sessions[index].addMessage(userMsg)
         save()
-        inputText = ""
-        let imagesToSend = attachedImages
-        clearImages()
-
         performSend(provider: provider, sessionIndex: index, userImages: imagesToSend)
     }
 
