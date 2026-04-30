@@ -141,6 +141,37 @@ struct MainChatView: View {
 
     var modelPickerView: some View {
         HStack(spacing: 6) {
+            Image(systemName: "server.rack")
+                .foregroundColor(.secondary)
+                .font(.caption)
+
+            Picker("服务商", selection: Binding(
+                get: { viewModel.activeProvider?.id ?? UUID() },
+                set: { viewModel.updateSessionProvider($0) }
+            )) {
+                ForEach(viewModel.providers) { provider in
+                    Text(provider.name).tag(provider.id)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .font(.caption)
+
+            Image(systemName: "bubble.left.and.bubble.right")
+                .foregroundColor(.secondary)
+                .font(.caption)
+            Picker("模式", selection: Binding(
+                get: { viewModel.selectedSession?.chatMode ?? .chat },
+                set: { viewModel.updateChatMode($0) }
+            )) {
+                ForEach(ChatMode.allCases, id: \.rawValue) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .font(.caption)
+
             Image(systemName: "cpu")
                 .foregroundColor(.secondary)
                 .font(.caption)
@@ -164,7 +195,7 @@ struct MainChatView: View {
                     .foregroundColor(.secondary)
                     .font(.system(size: 9))
                 Picker("上下文", selection: Binding(
-                    get: { viewModel.selectedSession?.contextLength ?? 128000 },
+                    get: { viewModel.selectedSession?.contextLength ?? 1000000 },
                     set: { viewModel.updateContextLength($0) }
                 )) {
                     Text("8K").tag(8000)
@@ -192,7 +223,7 @@ struct MainChatView: View {
     var contextProgressView: some View {
         let session = viewModel.selectedSession
         let tokens = session?.totalTokens ?? 0
-        let windowSize = session?.contextWindowSize ?? 128000
+        let windowSize = session?.contextWindowSize ?? 1000000
         let fraction = min(Double(tokens) / Double(windowSize), 1.0)
 
         return HStack(spacing: 6) {
@@ -230,7 +261,10 @@ struct MainChatView: View {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(viewModel.selectedSession?.messages ?? []) { msg in
-                            MessageBubbleView(message: msg)
+                            MessageBubbleView(message: msg,
+                                onRegenerate: msg.role == .assistant ? { viewModel.regenerateMessage(after: msg.id) } : nil,
+                                onEdit: msg.role == .user ? { viewModel.editMessage(msg.id) } : nil,
+                                onUndo: msg.role == .user ? { viewModel.undoExchange(after: msg.id) } : nil)
                                 .id(msg.id)
                         }
                     }
@@ -353,7 +387,7 @@ struct MainChatView: View {
         }
         .fileImporter(
             isPresented: $showFileImporter,
-            allowedContentTypes: [.image, .text, .plainText, UTType(filenameExtension: "md") ?? .text],
+            allowedContentTypes: [.image, .plainText],
             allowsMultipleSelection: true
         ) { result in
             switch result {

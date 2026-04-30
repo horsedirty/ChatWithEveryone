@@ -10,6 +10,8 @@ struct SettingsView: View {
     @State private var newProviderBaseURL = ""
     @State private var newProviderAPIKey = ""
     @State private var newProviderModel = ""
+    @State private var newImageGenBaseURL = ""
+    @State private var newCustomModel = ""
     @State private var showingAddSheet = false
 
     var body: some View {
@@ -52,6 +54,7 @@ struct SettingsView: View {
                             newProviderBaseURL = provider.baseURL
                             newProviderAPIKey = provider.apiKey
                             newProviderModel = provider.model
+                            newImageGenBaseURL = provider.imageGenerationBaseURL ?? ""
                             showingAddSheet = true
                         }
                     }
@@ -88,6 +91,7 @@ struct SettingsView: View {
                     newProviderBaseURL = ""
                     newProviderAPIKey = ""
                     newProviderModel = ""
+                    newImageGenBaseURL = ""
                     editingProvider = nil
                     showingAddSheet = true
                 } label: {
@@ -97,7 +101,7 @@ struct SettingsView: View {
             }
             .padding()
         }
-        .frame(width: 500, height: 450)
+        .frame(width: 520, height: 500)
         .sheet(isPresented: $showingAddSheet) {
             providerEditSheet
         }
@@ -117,26 +121,64 @@ struct SettingsView: View {
 
             Divider()
 
-            Form {
-                TextField("名称", text: $newProviderName)
-                Picker("类型", selection: $newProviderType) {
-                    ForEach(APIProviderType.allCases, id: \.rawValue) { type in
-                        Text(type.rawValue).tag(type)
+            ScrollView {
+                Form {
+                    TextField("名称", text: $newProviderName)
+                    Picker("类型", selection: $newProviderType) {
+                        ForEach(APIProviderType.allCases, id: \.rawValue) { type in
+                            Text(type.rawValue).tag(type)
+                        }
+                    }
+                    .onChange(of: newProviderType) { _, newType in
+                        if newProviderBaseURL.isEmpty || newProviderBaseURL == APIProviderType.deepseek.defaultBaseURL {
+                            newProviderBaseURL = newType.defaultBaseURL
+                        }
+                        if newProviderModel.isEmpty || newProviderModel == "deepseek-v4-flash" {
+                            newProviderModel = newType.defaultModel
+                        }
+                    }
+                    TextField("Base URL", text: $newProviderBaseURL)
+                    SecureField("API Key", text: $newProviderAPIKey)
+                    TextField("默认模型名称", text: $newProviderModel)
+                    TextField("图片生成地址", text: $newImageGenBaseURL)
+
+                    if let existing = editingProvider {
+                        Section("自定义模型") {
+                            ForEach(existing.customModels, id: \.self) { model in
+                                HStack {
+                                    Text(model)
+                                        .font(.caption)
+                                    Spacer()
+                                    Button {
+                                        viewModel.removeCustomModel(from: existing.id, model: model)
+                                        editingProvider = viewModel.providers.first(where: { $0.id == existing.id })
+                                    } label: {
+                                        Image(systemName: "minus.circle.fill")
+                                            .foregroundColor(.red)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            HStack {
+                                TextField("添加自定义模型", text: $newCustomModel)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.caption)
+                                Button {
+                                    viewModel.addCustomModel(to: existing.id, model: newCustomModel)
+                                    editingProvider = viewModel.providers.first(where: { $0.id == existing.id })
+                                    newCustomModel = ""
+                                } label: {
+                                    Image(systemName: "plus.circle.fill")
+                                        .foregroundColor(.accentColor)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(newCustomModel.trimmingCharacters(in: .whitespaces).isEmpty)
+                            }
+                        }
                     }
                 }
-                .onChange(of: newProviderType) { _, newType in
-                    if newProviderBaseURL.isEmpty || newProviderBaseURL == APIProviderType.deepseek.defaultBaseURL {
-                        newProviderBaseURL = newType.defaultBaseURL
-                    }
-                    if newProviderModel.isEmpty || newProviderModel == "deepseek-chat" {
-                        newProviderModel = newType.defaultModel
-                    }
-                }
-                TextField("Base URL", text: $newProviderBaseURL)
-                SecureField("API Key", text: $newProviderAPIKey)
-                TextField("模型名称", text: $newProviderModel)
+                .padding()
             }
-            .padding()
 
             Divider()
 
@@ -158,7 +200,7 @@ struct SettingsView: View {
             }
             .padding()
         }
-        .frame(width: 450, height: 360)
+        .frame(width: 480, height: 500)
     }
 
     private func saveProvider() {
@@ -168,7 +210,9 @@ struct SettingsView: View {
             providerType: newProviderType,
             baseURL: newProviderBaseURL,
             apiKey: newProviderAPIKey,
-            model: newProviderModel
+            model: newProviderModel,
+            customModels: editingProvider?.customModels ?? [],
+            imageGenerationBaseURL: newImageGenBaseURL.trimmingCharacters(in: .whitespaces).isEmpty ? nil : newImageGenBaseURL
         )
 
         if let existing = editingProvider,
@@ -187,6 +231,7 @@ struct SettingsView: View {
         newProviderBaseURL = provider.baseURL
         newProviderAPIKey = provider.apiKey
         newProviderModel = provider.model
+        newImageGenBaseURL = provider.imageGenerationBaseURL ?? ""
         editingProvider = nil
         showingAddSheet = true
     }

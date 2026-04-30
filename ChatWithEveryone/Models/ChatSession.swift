@@ -6,7 +6,8 @@ struct ChatSession: Identifiable, Codable, Equatable {
     var messages: [Message] = []
     var providerId: UUID?
     var selectedModel: String?
-    var contextLength: Int = 128000
+    var chatMode: ChatMode = .chat
+    var contextLength: Int = 1000000
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
 

@@ -26,19 +26,20 @@ final class FloatingPanelController: ObservableObject {
         isVisible = true
 
         let viewModel = ChatViewModel()
+        viewModel.createNewSession()
+
         let floatingView = FloatingChatView(viewModel: viewModel) { [weak self] in
             self?.hide()
-        } onOpenMainWindow: {
+        } onOpenMainWindow: { [weak self] in
+            self?.hide()
+            NSApp.unhide(nil)
+            NSApp.activate(ignoringOtherApps: true)
             for window in NSApp.windows {
                 if !(window is NSPanel) {
-                    if window.isMiniaturized {
-                        window.deminiaturize(nil)
-                    }
-                    window.orderFront(nil)
-                    break
+                    window.deminiaturize(nil)
+                    window.orderFrontRegardless()
                 }
             }
-            NSApp.activate(ignoringOtherApps: true)
         }
         let hostingView = NSHostingView(rootView: floatingView)
         self.hostingView = hostingView

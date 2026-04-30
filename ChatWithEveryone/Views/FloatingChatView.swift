@@ -62,7 +62,7 @@ struct FloatingChatView: View {
                             .foregroundColor(.secondary)
                             .font(.system(size: 9))
                         Picker("上下文", selection: Binding(
-                            get: { viewModel.selectedSession?.contextLength ?? 128000 },
+                            get: { viewModel.selectedSession?.contextLength ?? 1000000 },
                             set: { viewModel.updateContextLength($0) }
                         )) {
                             Text("8K").tag(8000)
@@ -244,7 +244,7 @@ struct FloatingChatView: View {
         .frame(minWidth: 440, minHeight: 500)
         .fileImporter(
             isPresented: $showFileImporter,
-            allowedContentTypes: [.image, .text, .plainText, UTType(filenameExtension: "md") ?? .text],
+            allowedContentTypes: [.image, .plainText],
             allowsMultipleSelection: true
         ) { result in
             switch result {
@@ -278,7 +278,7 @@ struct FloatingChatView: View {
     var contextProgressView: some View {
         let session = viewModel.selectedSession
         let tokens = session?.totalTokens ?? 0
-        let windowSize = session?.contextWindowSize ?? 128000
+        let windowSize = session?.contextWindowSize ?? 1000000
         let fraction = min(Double(tokens) / Double(windowSize), 1.0)
 
         return HStack(spacing: 6) {

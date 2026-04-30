@@ -213,4 +213,72 @@ final class APIService: @unchecked Sendable {
         }
         return nil
     }
+
+    func generateImage(
+        provider: APIProvider,
+        model: String,
+        prompt: String,
+        imageSize: String = "1024x1024",
+        onComplete: (@MainActor @Sendable (Result<[URL], APIError>) -> Void)?
+    ) {
+        guard !provider.apiKey.isEmpty else {
+            Task { @MainActor in onComplete?(.failure(.noAPIKey)) }
+            return
+        }
+
+        let urlString = provider.imageGenerationURL
+        guard let url = URL(string: urlString) else {
+            Task { @MainActor in onComplete?(.failure(.invalidURL)) }
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(provider.apiKey)", forHTTPHeaderField: "Authorization")
+
+        let body: [String: Any] = [
+            "model": model,
+            "prompt": prompt,
+            "image_size": imageSize,
+            "batch_size": 1,
+            "num_inference_steps": 20,
+            "guidance_scale": 7.5
+        ]
+
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        Task {
+            do {
+                let (data, response) = try await session.data(for: request)
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    await onComplete?(.failure(.invalidResponse))
+                    return
+                }
+
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    let bodyText = String(data: data, encoding: .utf8) ?? ""
+                    let errorMessage = APIService.extractErrorMessage(from: bodyText) ?? bodyText
+                    await onComplete?(.failure(.httpError(httpResponse.statusCode, errorMessage)))
+                    return
+                }
+
+                guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let images = json["images"] as? [[String: Any]] else {
+                    await onComplete?(.failure(.decodingError(NSError(domain: "", code: -1))))
+                    return
+                }
+
+                let urls: [URL] = images.compactMap { img in
+                    guard let urlStr = img["url"] as? String else { return nil }
+                    return URL(string: urlStr)
+                }
+
+                await onComplete?(.success(urls))
+            } catch {
+                await onComplete?(.failure(.networkError(error)))
+            }
+        }
+    }
 }

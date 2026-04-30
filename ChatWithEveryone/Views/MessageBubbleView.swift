@@ -1,8 +1,12 @@
 import SwiftUI
 import Textual
+import UniformTypeIdentifiers
 
 struct MessageBubbleView: View {
     let message: Message
+    var onRegenerate: (() -> Void)?
+    var onEdit: (() -> Void)?
+    var onUndo: (() -> Void)?
     @State private var showReasoning = false
 
     var body: some View {
@@ -56,6 +60,14 @@ struct MessageBubbleView: View {
                     .foregroundColor(.accentColor)
                 } else if !message.content.isEmpty {
                     markdownContent
+                }
+
+                if message.role == .assistant, !message.extractedImageURLs.isEmpty {
+                    generatedImagesView
+                }
+
+                if !message.isStreaming, !message.content.isEmpty {
+                    actionButtons
                 }
             }
 
@@ -133,6 +145,137 @@ struct MessageBubbleView: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(message.content, forType: .string)
                 }
+                if !message.extractedImageURLs.isEmpty {
+                    Divider()
+                    ForEach(Array(message.extractedImageURLs.enumerated()), id: \.offset) { _, url in
+                        Button("保存图片: \(url.lastPathComponent)") {
+                            saveImage(from: url)
+                        }
+                    }
+                    Button("保存全部图片") {
+                        for url in message.extractedImageURLs {
+                            saveImage(from: url)
+                        }
+                    }
+                }
             }
+    }
+
+    var generatedImagesView: some View {
+        VStack(spacing: 8) {
+            ForEach(Array(message.extractedImageURLs.enumerated()), id: \.offset) { _, url in
+                HStack {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: 200, maxHeight: 200)
+                                .cornerRadius(8)
+                        case .failure:
+                            VStack(spacing: 4) {
+                                Image(systemName: "photo.badge.exclamationmark")
+                                    .font(.title2)
+                                    .foregroundColor(.secondary)
+                                Text("加载失败")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(width: 200, height: 120)
+                        case .empty:
+                            ProgressView()
+                                .frame(width: 200, height: 120)
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                    .padding(6)
+                    .background(Color(nsColor: .controlBackgroundColor))
+                    .cornerRadius(8)
+
+                    Button {
+                        saveImage(from: url)
+                    } label: {
+                        Image(systemName: "square.and.arrow.down")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .help("保存图片")
+                }
+            }
+        }
+        .padding(.leading, 6)
+    }
+
+    var actionButtons: some View {
+        HStack(spacing: 8) {
+            if message.role == .assistant {
+                Button {
+                    onRegenerate?()
+                } label: {
+                    HStack(spacing: 2) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption2)
+                        Text("重新生成")
+                            .font(.caption2)
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.secondary.opacity(0.08))
+                .cornerRadius(4)
+            } else if message.role == .user {
+                Button {
+                    onEdit?()
+                } label: {
+                    HStack(spacing: 2) {
+                        Image(systemName: "pencil")
+                            .font(.caption2)
+                        Text("编辑")
+                            .font(.caption2)
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.secondary.opacity(0.08))
+                .cornerRadius(4)
+
+                Button {
+                    onUndo?()
+                } label: {
+                    HStack(spacing: 2) {
+                        Image(systemName: "arrow.uturn.backward")
+                            .font(.caption2)
+                        Text("撤销")
+                            .font(.caption2)
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.secondary.opacity(0.08))
+                .cornerRadius(4)
+            }
+        }
+    }
+
+    private func saveImage(from url: URL) {
+        Task {
+            guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
+            await MainActor.run {
+                let savePanel = NSSavePanel()
+                savePanel.nameFieldStringValue = url.lastPathComponent
+                savePanel.allowedContentTypes = [.png, .jpeg, .gif]
+                if savePanel.runModal() == .OK, let saveURL = savePanel.url {
+                    try? data.write(to: saveURL)
+                }
+            }
+        }
     }
 }

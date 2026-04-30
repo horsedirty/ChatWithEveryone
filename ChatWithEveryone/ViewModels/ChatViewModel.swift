@@ -34,11 +34,30 @@ final class ChatViewModel: ObservableObject {
     }
 
     var availableModelsForCurrentProvider: [String] {
-        activeProvider?.providerType.availableModels ?? []
+        let allModels: [String] = {
+            var models = activeProvider?.providerType.availableModels ?? []
+            if let custom = activeProvider?.customModels {
+                for m in custom where !models.contains(m) {
+                    models.append(m)
+                }
+            }
+            if let m = activeProvider?.model, !m.isEmpty, !models.contains(m) {
+                models.append(m)
+            }
+            if let m = selectedSession?.selectedModel, !m.isEmpty, !models.contains(m) {
+                models.append(m)
+            }
+            return models
+        }()
+        let mode = selectedSession?.chatMode ?? .chat
+        if mode == .imageGeneration {
+            return allModels.filter { activeProvider?.providerType.isImageGenerationModel($0) ?? false }
+        }
+        return allModels.filter { !(activeProvider?.providerType.isImageGenerationModel($0) ?? false) }
     }
 
     var showModelPicker: Bool {
-        !availableModelsForCurrentProvider.isEmpty
+        !currentModel.isEmpty
     }
 
     var providerName: String {
@@ -89,6 +108,8 @@ final class ChatViewModel: ObservableObject {
     }
 
     func addImage(from url: URL) {
+        guard url.startAccessingSecurityScopedResource() else { return }
+        defer { url.stopAccessingSecurityScopedResource() }
         guard let data = try? Data(contentsOf: url) else { return }
         let id = UUID()
         let path = StorageService.shared.saveImage(data, id: id)
@@ -98,6 +119,8 @@ final class ChatViewModel: ObservableObject {
     }
 
     func addTextFile(from url: URL) {
+        guard url.startAccessingSecurityScopedResource() else { return }
+        defer { url.stopAccessingSecurityScopedResource() }
         guard let content = try? String(contentsOf: url, encoding: .utf8) else { return }
         let filename = url.lastPathComponent
         attachedFileNames.append(filename)
@@ -128,9 +151,6 @@ final class ChatViewModel: ObservableObject {
     }
 
     func clearImages() {
-        for img in attachedImages {
-            StorageService.shared.deleteImage(at: img.localFilePath)
-        }
         attachedImages.removeAll()
     }
 
@@ -154,6 +174,14 @@ final class ChatViewModel: ObservableObject {
         let imagesToSend = attachedImages
         clearImages()
         clearFiles()
+
+        let model = currentModel
+        let mode = selectedSession?.chatMode ?? .chat
+
+        if mode == .imageGeneration {
+            performImageGeneration(provider: provider, model: model, prompt: text, userImages: imagesToSend)
+            return
+        }
 
         guard let index = sessions.firstIndex(where: { $0.id == selectedSessionId }) else {
             let newSession = ChatSession(title: "新对话", providerId: provider.id)
@@ -217,6 +245,51 @@ final class ChatViewModel: ObservableObject {
         )
     }
 
+    private func performImageGeneration(provider: APIProvider, model: String, prompt: String, userImages: [ImageAttachment]) {
+        isSending = true
+        errorMessage = nil
+
+        let sessionIndex: Int
+        if let idx = sessions.firstIndex(where: { $0.id == selectedSessionId }) {
+            sessionIndex = idx
+        } else {
+            let newSession = ChatSession(title: "新对话", providerId: provider.id)
+            sessions.insert(newSession, at: 0)
+            selectedSessionId = newSession.id
+            sessionIndex = 0
+        }
+
+        let userMsg = Message.user(prompt, images: userImages)
+        sessions[sessionIndex].addMessage(userMsg)
+
+        APIService.shared.generateImage(
+            provider: provider,
+            model: model,
+            prompt: prompt
+        ) { [weak self] result in
+            guard let self else { return }
+            self.isSending = false
+            switch result {
+            case .success(let urls):
+                let imageMarkdown = urls.map { "![生成的图片](\($0.absoluteString))" }.joined(separator: "\n")
+                let responseText = imageMarkdown.isEmpty ? "图片生成完成，但未能获取图片链接。" : imageMarkdown
+                let assistantMsg = Message.assistant(responseText, isStreaming: false)
+                if self.sessions.indices.contains(sessionIndex) {
+                    self.sessions[sessionIndex].addMessage(assistantMsg)
+                }
+                self.save()
+            case .failure(let error):
+                self.errorMessage = error.localizedDescription
+                let errorMsg = "图片生成失败\nURL: \(provider.imageGenerationURL)\n\(error.localizedDescription)"
+                let assistantMsg = Message.assistant(errorMsg, isStreaming: false)
+                if self.sessions.indices.contains(sessionIndex) {
+                    self.sessions[sessionIndex].addMessage(assistantMsg)
+                }
+                self.save()
+            }
+        }
+    }
+
     func captureScreenAndAttach() async {
         isSending = true
         if let image = await ScreenCaptureService.shared.captureFullScreen() {
@@ -244,10 +317,74 @@ final class ChatViewModel: ObservableObject {
         save()
     }
 
+    func updateSessionProvider(_ providerId: UUID) {
+        guard let sessionId = selectedSessionId,
+              let index = sessions.firstIndex(where: { $0.id == sessionId }),
+              providers.contains(where: { $0.id == providerId }) else { return }
+        sessions[index].providerId = providerId
+        sessions[index].selectedModel = nil
+        save()
+    }
+
+    func updateChatMode(_ mode: ChatMode) {
+        guard let sessionId = selectedSessionId,
+              let index = sessions.firstIndex(where: { $0.id == sessionId }) else { return }
+        sessions[index].chatMode = mode
+        sessions[index].selectedModel = nil
+        save()
+    }
+
+    func regenerateMessage(after messageId: UUID) {
+        guard let sessionId = selectedSessionId,
+              let sessionIndex = sessions.firstIndex(where: { $0.id == sessionId }),
+              let msgIndex = sessions[sessionIndex].messages.firstIndex(where: { $0.id == messageId }),
+              msgIndex > 0,
+              sessions[sessionIndex].messages[msgIndex - 1].role == .user else { return }
+        let userMsg = sessions[sessionIndex].messages[msgIndex - 1]
+        sessions[sessionIndex].messages.removeSubrange(msgIndex...)
+        save()
+        guard let provider = activeProvider else { return }
+        performSend(provider: provider, sessionIndex: sessionIndex, userImages: userMsg.images)
+    }
+
+    func editMessage(_ messageId: UUID) {
+        guard let sessionId = selectedSessionId,
+              let sessionIndex = sessions.firstIndex(where: { $0.id == sessionId }),
+              let msgIndex = sessions[sessionIndex].messages.firstIndex(where: { $0.id == messageId }),
+              sessions[sessionIndex].messages[msgIndex].role == .user else { return }
+        inputText = sessions[sessionIndex].messages[msgIndex].content
+    }
+
+    func undoExchange(after messageId: UUID) {
+        guard let sessionId = selectedSessionId,
+              let sessionIndex = sessions.firstIndex(where: { $0.id == sessionId }),
+              let msgIndex = sessions[sessionIndex].messages.firstIndex(where: { $0.id == messageId }) else { return }
+        if msgIndex > 0, sessions[sessionIndex].messages[msgIndex - 1].role == .assistant {
+            sessions[sessionIndex].messages.removeSubrange((msgIndex - 1)...)
+        } else {
+            sessions[sessionIndex].messages.remove(at: msgIndex)
+        }
+        save()
+    }
+
     func updateContextLength(_ length: Int) {
         guard let sessionId = selectedSessionId,
               let index = sessions.firstIndex(where: { $0.id == sessionId }) else { return }
         sessions[index].contextLength = length
+        save()
+    }
+
+    func addCustomModel(to providerId: UUID, model: String) {
+        guard let index = providers.firstIndex(where: { $0.id == providerId }),
+              !model.trimmingCharacters(in: .whitespaces).isEmpty,
+              !providers[index].customModels.contains(model) else { return }
+        providers[index].customModels.append(model)
+        save()
+    }
+
+    func removeCustomModel(from providerId: UUID, model: String) {
+        guard let index = providers.firstIndex(where: { $0.id == providerId }) else { return }
+        providers[index].customModels.removeAll(where: { $0 == model })
         save()
     }
 

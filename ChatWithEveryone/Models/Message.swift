@@ -1,5 +1,10 @@
 import Foundation
 
+enum ChatMode: String, Codable, CaseIterable {
+    case chat = "对话"
+    case imageGeneration = "图片生成"
+}
+
 enum MessageRole: String, Codable {
     case user
     case assistant
@@ -25,6 +30,13 @@ struct Message: Identifiable, Codable, Equatable {
     var hasImages: Bool { !images.isEmpty }
 
     var hasReasoning: Bool { !reasoningContent.isEmpty }
+
+    var extractedImageURLs: [URL] {
+        let pattern = /!\[.*?\]\((https?:\/\/[^\s)]+\.(?:png|jpg|jpeg|gif|webp|bmp)(?:\?[^\s)]*)?)\)/
+        return content.matches(of: pattern).compactMap { match in
+            URL(string: String(match.output.1))
+        }
+    }
 
     var tokenCount: Int {
         var count = 0

@@ -72,18 +72,23 @@ final class ScreenCaptureService: ObservableObject {
             capturer.capture(filter: filter, config: config) { image in
                 continuation.resume(returning: image)
             }
+
+            Task {
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
+                capturer.timeout()
+            }
         }
     }
 }
 
-private final class ScreenCapturer: NSObject, SCStreamOutput {
+private final class ScreenCapturer: NSObject, SCStreamDelegate, SCStreamOutput {
     private var stream: SCStream?
     private var completion: ((NSImage?) -> Void)?
     private var hasDelivered = false
 
     func capture(filter: SCContentFilter, config: SCStreamConfiguration, completion: @escaping (NSImage?) -> Void) {
         self.completion = completion
-        let stream = SCStream(filter: filter, configuration: config, delegate: nil)
+        let stream = SCStream(filter: filter, configuration: config, delegate: self)
         self.stream = stream
 
         do {
@@ -100,6 +105,13 @@ private final class ScreenCapturer: NSObject, SCStreamOutput {
                 completion(nil)
             }
         }
+    }
+
+    func timeout() {
+        guard !hasDelivered else { return }
+        hasDelivered = true
+        Task { try? await stream?.stopCapture() }
+        completion?(nil)
     }
 
     func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
@@ -127,6 +139,7 @@ private final class ScreenCapturer: NSObject, SCStreamOutput {
     func stream(_ stream: SCStream, didStopWithError error: Error) {
         if !hasDelivered {
             hasDelivered = true
+            Task { try? await stream.stopCapture() }
             completion?(nil)
         }
     }

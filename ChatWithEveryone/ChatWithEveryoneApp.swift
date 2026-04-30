@@ -2,8 +2,6 @@ import SwiftUI
 
 @main
 struct ChatWithEveryoneApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -17,25 +15,6 @@ struct ChatWithEveryoneApp: App {
                 .keyboardShortcut("n", modifiers: .command)
             }
         }
-    }
-}
-
-final class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        HotKeyManager.shared.onHotKeyPressed = {
-            DispatchQueue.main.async {
-                FloatingPanelController.shared.toggle()
-            }
-        }
-        HotKeyManager.shared.register()
-    }
-
-    func applicationWillTerminate(_ notification: Notification) {
-        HotKeyManager.shared.unregister()
-    }
-
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        return false
     }
 }
 
