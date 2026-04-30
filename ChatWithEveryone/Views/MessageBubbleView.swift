@@ -1,4 +1,5 @@
 import SwiftUI
+import Textual
 
 struct MessageBubbleView: View {
     let message: Message
@@ -41,8 +42,8 @@ struct MessageBubbleView: View {
                     }
                     .foregroundColor(.accentColor)
                 } else {
-                    Text(message.content)
-                        .textSelection(.enabled)
+                    InlineText(markdown: message.content)
+                        .textual.textSelection(.enabled)
                         .padding(10)
                         .background(message.role == .user ? Color.accentColor : Color(nsColor: .controlBackgroundColor))
                         .foregroundColor(message.role == .user ? .white : .primary)
