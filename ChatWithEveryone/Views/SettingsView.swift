@@ -1,0 +1,193 @@
+import SwiftUI
+
+struct SettingsView: View {
+    @ObservedObject var viewModel: ChatViewModel
+    @Environment(\.dismiss) var dismiss
+
+    @State private var editingProvider: APIProvider?
+    @State private var newProviderName = ""
+    @State private var newProviderType: APIProviderType = .deepseek
+    @State private var newProviderBaseURL = ""
+    @State private var newProviderAPIKey = ""
+    @State private var newProviderModel = ""
+    @State private var showingAddSheet = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("API 配置")
+                    .font(.headline)
+                Spacer()
+                Button("完成") { dismiss() }
+            }
+            .padding()
+
+            Divider()
+
+            List {
+                Section("已配置的提供商") {
+                    ForEach(viewModel.providers) { provider in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(provider.name)
+                                    .font(.body)
+                                Text("\(provider.providerType.rawValue) - \(provider.model)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            if provider.isEnabled {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                            } else {
+                                Image(systemName: "circle")
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            editingProvider = provider
+                            newProviderName = provider.name
+                            newProviderType = provider.providerType
+                            newProviderBaseURL = provider.baseURL
+                            newProviderAPIKey = provider.apiKey
+                            newProviderModel = provider.model
+                            showingAddSheet = true
+                        }
+                    }
+                    .onDelete { indexSet in
+                        viewModel.providers.remove(atOffsets: indexSet)
+                        viewModel.save()
+                    }
+                }
+
+                Section("快速添加") {
+                    ForEach(APIProviderType.allCases, id: \.rawValue) { type in
+                        Button {
+                            addQuickProvider(type)
+                        } label: {
+                            HStack {
+                                Text(type.rawValue)
+                                Spacer()
+                                Text(type.defaultModel)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            Divider()
+
+            HStack {
+                Button {
+                    newProviderName = ""
+                    newProviderType = .deepseek
+                    newProviderBaseURL = ""
+                    newProviderAPIKey = ""
+                    newProviderModel = ""
+                    editingProvider = nil
+                    showingAddSheet = true
+                } label: {
+                    Label("添加自定义提供商", systemImage: "plus")
+                }
+                Spacer()
+            }
+            .padding()
+        }
+        .frame(width: 500, height: 450)
+        .sheet(isPresented: $showingAddSheet) {
+            providerEditSheet
+        }
+    }
+
+    var providerEditSheet: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(editingProvider == nil ? "添加提供商" : "编辑提供商")
+                    .font(.headline)
+                Spacer()
+                Button("取消") {
+                    showingAddSheet = false
+                }
+            }
+            .padding()
+
+            Divider()
+
+            Form {
+                TextField("名称", text: $newProviderName)
+                Picker("类型", selection: $newProviderType) {
+                    ForEach(APIProviderType.allCases, id: \.rawValue) { type in
+                        Text(type.rawValue).tag(type)
+                    }
+                }
+                .onChange(of: newProviderType) { _, newType in
+                    if newProviderBaseURL.isEmpty || newProviderBaseURL == APIProviderType.deepseek.defaultBaseURL {
+                        newProviderBaseURL = newType.defaultBaseURL
+                    }
+                    if newProviderModel.isEmpty || newProviderModel == "deepseek-chat" {
+                        newProviderModel = newType.defaultModel
+                    }
+                }
+                TextField("Base URL", text: $newProviderBaseURL)
+                SecureField("API Key", text: $newProviderAPIKey)
+                TextField("模型名称", text: $newProviderModel)
+            }
+            .padding()
+
+            Divider()
+
+            HStack {
+                if let existing = editingProvider {
+                    Button("删除", role: .destructive) {
+                        viewModel.providers.removeAll(where: { $0.id == existing.id })
+                        viewModel.save()
+                        showingAddSheet = false
+                    }
+                }
+                Spacer()
+                Button("保存") {
+                    saveProvider()
+                    showingAddSheet = false
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(newProviderName.isEmpty || newProviderBaseURL.isEmpty || newProviderAPIKey.isEmpty)
+            }
+            .padding()
+        }
+        .frame(width: 450, height: 360)
+    }
+
+    private func saveProvider() {
+        let provider = APIProvider(
+            id: editingProvider?.id ?? UUID(),
+            name: newProviderName,
+            providerType: newProviderType,
+            baseURL: newProviderBaseURL,
+            apiKey: newProviderAPIKey,
+            model: newProviderModel
+        )
+
+        if let existing = editingProvider,
+           let idx = viewModel.providers.firstIndex(where: { $0.id == existing.id }) {
+            viewModel.providers[idx] = provider
+        } else {
+            viewModel.providers.append(provider)
+        }
+        viewModel.save()
+    }
+
+    private func addQuickProvider(_ type: APIProviderType) {
+        let provider = APIProvider.default(for: type)
+        newProviderName = provider.name
+        newProviderType = provider.providerType
+        newProviderBaseURL = provider.baseURL
+        newProviderAPIKey = provider.apiKey
+        newProviderModel = provider.model
+        editingProvider = nil
+        showingAddSheet = true
+    }
+}
