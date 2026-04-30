@@ -69,18 +69,18 @@ final class APIService: @unchecked Sendable {
         provider: APIProvider,
         messages: [[String: Any]],
         streaming: Bool = true,
-        onReasoningChunk: (@Sendable (String) -> Void)? = nil,
-        onChunk: (@Sendable (String) -> Void)?,
-        onComplete: (@Sendable (Result<String, APIError>) -> Void)?
+        onReasoningChunk: (@MainActor @Sendable (String) -> Void)? = nil,
+        onChunk: (@MainActor @Sendable (String) -> Void)?,
+        onComplete: (@MainActor @Sendable (Result<String, APIError>) -> Void)?
     ) {
         guard !provider.apiKey.isEmpty else {
-            onComplete?(.failure(.noAPIKey))
+            Task { @MainActor in onComplete?(.failure(.noAPIKey)) }
             return
         }
 
         let urlString = provider.chatCompletionURL
         guard let url = URL(string: urlString) else {
-            onComplete?(.failure(.invalidURL))
+            Task { @MainActor in onComplete?(.failure(.invalidURL)) }
             return
         }
 
@@ -111,107 +111,95 @@ final class APIService: @unchecked Sendable {
 
     private func performStreamRequest(
         _ request: URLRequest,
-        onReasoningChunk: (@Sendable (String) -> Void)?,
-        onChunk: (@Sendable (String) -> Void)?,
-        onComplete: (@Sendable (Result<String, APIError>) -> Void)?
+        onReasoningChunk: (@MainActor @Sendable (String) -> Void)?,
+        onChunk: (@MainActor @Sendable (String) -> Void)?,
+        onComplete: (@MainActor @Sendable (Result<String, APIError>) -> Void)?
     ) {
-        let task = session.dataTask(with: request) { data, response, error in
-            if let error = error {
-                onComplete?(.failure(.networkError(error)))
-                return
-            }
+        Task {
+            do {
+                let (bytes, response) = try await session.bytes(for: request)
 
-            guard let httpResponse = response as? HTTPURLResponse else {
-                onComplete?(.failure(.invalidResponse))
-                return
-            }
-
-            guard (200...299).contains(httpResponse.statusCode) else {
-                let body = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
-                let errorMessage = APIService.extractErrorMessage(from: body) ?? body
-                onComplete?(.failure(.httpError(httpResponse.statusCode, errorMessage)))
-                return
-            }
-
-            guard let data = data else {
-                onComplete?(.failure(.invalidResponse))
-                return
-            }
-
-            let text = String(data: data, encoding: .utf8) ?? ""
-            let lines = text.components(separatedBy: "\n").filter { $0.hasPrefix("data: ") }
-
-            var fullContent = ""
-            var streamedContent = false
-
-            for line in lines {
-                let jsonString = String(line.dropFirst(6))
-                if jsonString == "[DONE]" { continue }
-                guard let jsonData = jsonString.data(using: .utf8) else { continue }
-
-                do {
-                    let chunk = try self.decoder.decode(ChatCompletionChunk.self, from: jsonData)
-                    if let reasoning = chunk.choices?.first?.delta?.reasoning_content {
-                        DispatchQueue.main.async { onReasoningChunk?(reasoning) }
-                    }
-                    if let content = chunk.choices?.first?.delta?.content {
-                        fullContent += content
-                        streamedContent = true
-                        DispatchQueue.main.async { onChunk?(content) }
-                    }
-                } catch {
-                    continue
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    await onComplete?(.failure(.invalidResponse))
+                    return
                 }
-            }
 
-            DispatchQueue.main.async {
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    var errorBody = ""
+                    for try await line in bytes.lines.prefix(20) {
+                        errorBody += line
+                    }
+                    let errorMessage = APIService.extractErrorMessage(from: errorBody) ?? errorBody
+                    await onComplete?(.failure(.httpError(httpResponse.statusCode, errorMessage)))
+                    return
+                }
+
+                var fullContent = ""
+                var streamedContent = false
+
+                for try await line in bytes.lines {
+                    guard line.hasPrefix("data: ") else { continue }
+                    let jsonString = String(line.dropFirst(6))
+                    if jsonString == "[DONE]" { break }
+                    guard let jsonData = jsonString.data(using: .utf8) else { continue }
+
+                    do {
+                        let chunk = try self.decoder.decode(ChatCompletionChunk.self, from: jsonData)
+                        if let reasoning = chunk.choices?.first?.delta?.reasoning_content {
+                            await onReasoningChunk?(reasoning)
+                        }
+                        if let content = chunk.choices?.first?.delta?.content {
+                            fullContent += content
+                            streamedContent = true
+                            await onChunk?(content)
+                        }
+                    } catch {
+                        continue
+                    }
+                }
+
                 if !streamedContent && fullContent.isEmpty {
-                    let errorMsg = APIService.extractErrorMessage(from: text) ?? "空响应"
-                    onComplete?(.failure(.streamError(errorMsg)))
+                    await onComplete?(.failure(.streamError("空响应")))
                 } else {
-                    onComplete?(.success(fullContent))
+                    await onComplete?(.success(fullContent))
                 }
+            } catch {
+                await onComplete?(.failure(.networkError(error)))
             }
         }
-        task.resume()
     }
 
     private func performNonStreamRequest(
         _ request: URLRequest,
-        onComplete: (@Sendable (Result<String, APIError>) -> Void)?
+        onComplete: (@MainActor @Sendable (Result<String, APIError>) -> Void)?
     ) {
-        let task = session.dataTask(with: request) { data, response, error in
-            if let error = error {
-                DispatchQueue.main.async { onComplete?(.failure(.networkError(error))) }
-                return
-            }
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                DispatchQueue.main.async { onComplete?(.failure(.invalidResponse)) }
-                return
-            }
-
-            guard let data = data else {
-                DispatchQueue.main.async { onComplete?(.failure(.invalidResponse)) }
-                return
-            }
-
-            guard (200...299).contains(httpResponse.statusCode) else {
-                let body = String(data: data, encoding: .utf8) ?? ""
-                let errorMessage = APIService.extractErrorMessage(from: body) ?? body
-                DispatchQueue.main.async { onComplete?(.failure(.httpError(httpResponse.statusCode, errorMessage))) }
-                return
-            }
-
+        Task {
             do {
-                let result = try self.decoder.decode(ChatCompletionResponse.self, from: data)
-                let content = result.choices?.first?.message?.content ?? ""
-                DispatchQueue.main.async { onComplete?(.success(content)) }
+                let (data, response) = try await session.data(for: request)
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    await onComplete?(.failure(.invalidResponse))
+                    return
+                }
+
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    let body = String(data: data, encoding: .utf8) ?? ""
+                    let errorMessage = APIService.extractErrorMessage(from: body) ?? body
+                    await onComplete?(.failure(.httpError(httpResponse.statusCode, errorMessage)))
+                    return
+                }
+
+                do {
+                    let result = try self.decoder.decode(ChatCompletionResponse.self, from: data)
+                    let content = result.choices?.first?.message?.content ?? ""
+                    await onComplete?(.success(content))
+                } catch {
+                    await onComplete?(.failure(.decodingError(error)))
+                }
             } catch {
-                DispatchQueue.main.async { onComplete?(.failure(.decodingError(error))) }
+                await onComplete?(.failure(.networkError(error)))
             }
         }
-        task.resume()
     }
 
     private static func extractErrorMessage(from text: String) -> String? {

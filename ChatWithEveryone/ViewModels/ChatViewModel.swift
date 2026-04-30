@@ -159,39 +159,30 @@ final class ChatViewModel: ObservableObject {
             streaming: true,
             onReasoningChunk: { [weak self] chunk in
                 guard let self else { return }
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    if self.sessions.indices.contains(sessionIndex) {
-                        self.sessions[sessionIndex].appendReasoningContent(chunk)
-                    }
+                if self.sessions.indices.contains(sessionIndex) {
+                    self.sessions[sessionIndex].appendReasoningContent(chunk)
                 }
             },
             onChunk: { [weak self] chunk in
                 guard let self else { return }
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    if self.sessions.indices.contains(sessionIndex) {
-                        self.sessions[sessionIndex].appendToLastAssistantMessage(chunk)
-                    }
+                if self.sessions.indices.contains(sessionIndex) {
+                    self.sessions[sessionIndex].appendToLastAssistantMessage(chunk)
                 }
             },
             onComplete: { [weak self] result in
                 guard let self else { return }
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    self.isSending = false
-                    switch result {
-                    case .success:
-                        if self.sessions.indices.contains(sessionIndex) {
-                            self.sessions[sessionIndex].finishLastAssistantStreaming()
-                        }
-                        self.save()
-                    case .failure(let error):
-                        self.errorMessage = error.localizedDescription
-                        let errorMsg = "错误: \(error.localizedDescription)"
-                        if self.sessions.indices.contains(sessionIndex) {
-                            self.sessions[sessionIndex].updateLastAssistantMessage(errorMsg)
-                        }
+                self.isSending = false
+                switch result {
+                case .success:
+                    if self.sessions.indices.contains(sessionIndex) {
+                        self.sessions[sessionIndex].finishLastAssistantStreaming()
+                    }
+                    self.save()
+                case .failure(let error):
+                    self.errorMessage = error.localizedDescription
+                    let errorMsg = "错误: \(error.localizedDescription)"
+                    if self.sessions.indices.contains(sessionIndex) {
+                        self.sessions[sessionIndex].updateLastAssistantMessage(errorMsg)
                     }
                 }
             }
@@ -222,6 +213,20 @@ final class ChatViewModel: ObservableObject {
         guard let sessionId = selectedSessionId,
               let index = sessions.firstIndex(where: { $0.id == sessionId }) else { return }
         sessions[index].selectedModel = model
+        save()
+    }
+
+    func updateContextLength(_ length: Int) {
+        guard let sessionId = selectedSessionId,
+              let index = sessions.firstIndex(where: { $0.id == sessionId }) else { return }
+        sessions[index].contextLength = length
+        save()
+    }
+
+    func updateSessionTitle(_ sessionId: UUID, title: String) {
+        guard let index = sessions.firstIndex(where: { $0.id == sessionId }),
+              !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        sessions[index].title = title
         save()
     }
 }

@@ -5,6 +5,8 @@ struct MainChatView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var showFileImporter = false
     @State private var showScreenCaptureSheet = false
+    @State private var editingSessionId: UUID?
+    @State private var editingTitle = ""
 
     var body: some View {
         NavigationSplitView {
@@ -25,21 +27,59 @@ struct MainChatView: View {
             }
         )) {
             ForEach(viewModel.sessions) { session in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(session.title)
-                        .lineLimit(1)
-                        .font(.body)
-                    Text(session.updatedAt, style: .date)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 4)
-                .contextMenu {
-                    Button("删除对话", role: .destructive) {
-                        viewModel.deleteSession(session.id)
+                if editingSessionId == session.id {
+                    HStack(spacing: 4) {
+                        TextField("标题", text: $editingTitle)
+                            .textFieldStyle(.plain)
+                            .font(.body)
+                            .onSubmit {
+                                viewModel.updateSessionTitle(session.id, title: editingTitle)
+                                editingSessionId = nil
+                            }
+                        Button {
+                            viewModel.updateSessionTitle(session.id, title: editingTitle)
+                            editingSessionId = nil
+                        } label: {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.accentColor)
+                        }
+                        .buttonStyle(.plain)
+                        Button {
+                            editingSessionId = nil
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
                     }
+                    .padding(.vertical, 4)
+                    .tag(session.id)
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(session.title)
+                            .lineLimit(1)
+                            .font(.body)
+                        Text(session.updatedAt, style: .date)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                    .contextMenu {
+                        Button("重命名") {
+                            editingSessionId = session.id
+                            editingTitle = session.title
+                        }
+                        Divider()
+                        Button("删除对话", role: .destructive) {
+                            viewModel.deleteSession(session.id)
+                        }
+                    }
+                    .onTapGesture(count: 2) {
+                        editingSessionId = session.id
+                        editingTitle = session.title
+                    }
+                    .tag(session.id)
                 }
-                .tag(session.id)
             }
             .onDelete { indexSet in
                 for idx in indexSet {
@@ -115,6 +155,33 @@ struct MainChatView: View {
             .pickerStyle(.menu)
             .labelsHidden()
             .font(.caption)
+
+            Divider()
+                .frame(height: 14)
+
+            HStack(spacing: 2) {
+                Image(systemName: "chart.bar.doc.horizontal")
+                    .foregroundColor(.secondary)
+                    .font(.system(size: 9))
+                Picker("上下文", selection: Binding(
+                    get: { viewModel.selectedSession?.contextLength ?? 128000 },
+                    set: { viewModel.updateContextLength($0) }
+                )) {
+                    Text("8K").tag(8000)
+                    Text("16K").tag(16000)
+                    Text("32K").tag(32000)
+                    Text("64K").tag(64000)
+                    Text("128K").tag(128000)
+                    Text("256K").tag(256000)
+                    Text("1M").tag(1000000)
+                    Text("2M").tag(2000000)
+                    Text("4M").tag(4000000)
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .font(.system(size: 9))
+            }
+
             Spacer()
         }
         .padding(.horizontal, 16)
@@ -144,7 +211,7 @@ struct MainChatView: View {
                 }
             }
             .frame(height: 4)
-            Text("\(tokens)/\(windowSize/1000)k")
+            Text(windowSize >= 1000000 ? "\(tokens)/\(windowSize/1000000)M" : "\(tokens)/\(windowSize/1000)k")
                 .font(.system(size: 9))
                 .foregroundColor(.secondary)
                 .monospacedDigit()

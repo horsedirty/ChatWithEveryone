@@ -6,6 +6,7 @@ struct ChatSession: Identifiable, Codable, Equatable {
     var messages: [Message] = []
     var providerId: UUID?
     var selectedModel: String?
+    var contextLength: Int = 128000
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
 
@@ -16,7 +17,7 @@ struct ChatSession: Identifiable, Codable, Equatable {
     }
 
     var contextWindowSize: Int {
-        128000
+        contextLength
     }
 
     mutating func addMessage(_ message: Message) {

@@ -44,6 +44,32 @@ struct FloatingChatView: View {
                     .pickerStyle(.menu)
                     .labelsHidden()
                     .font(.caption)
+
+                    Divider()
+                        .frame(height: 14)
+
+                    HStack(spacing: 2) {
+                        Image(systemName: "chart.bar.doc.horizontal")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 9))
+                        Picker("上下文", selection: Binding(
+                            get: { viewModel.selectedSession?.contextLength ?? 128000 },
+                            set: { viewModel.updateContextLength($0) }
+                        )) {
+                            Text("8K").tag(8000)
+                            Text("16K").tag(16000)
+                            Text("32K").tag(32000)
+                            Text("64K").tag(64000)
+                            Text("128K").tag(128000)
+                            Text("256K").tag(256000)
+                            Text("1M").tag(1000000)
+                            Text("2M").tag(2000000)
+                            Text("4M").tag(4000000)
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .font(.system(size: 9))
+                    }
                     Spacer()
                 }
                 .padding(.horizontal)
@@ -231,7 +257,7 @@ struct FloatingChatView: View {
                 }
             }
             .frame(height: 4)
-            Text("\(tokens)/\(windowSize/1000)k")
+            Text(windowSize >= 1000000 ? "\(tokens)/\(windowSize/1000000)M" : "\(tokens)/\(windowSize/1000)k")
                 .font(.system(size: 9))
                 .foregroundColor(.secondary)
                 .monospacedDigit()
