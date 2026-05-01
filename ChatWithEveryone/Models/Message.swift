@@ -60,4 +60,10 @@ struct Message: Identifiable, Codable, Equatable {
     static func system(_ content: String) -> Message {
         Message(role: .system, content: content)
     }
+
+    static func searchResult(_ results: [SearchResult]) -> Message {
+        Message(role: .system, content: WebSearchService.formatSearchResults(results), searchResults: results)
+    }
+
+    var searchResults: [SearchResult]?
 }

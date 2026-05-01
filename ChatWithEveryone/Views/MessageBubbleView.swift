@@ -10,74 +10,128 @@ struct MessageBubbleView: View {
     @State private var showReasoning = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            if message.role == .assistant {
-                Image(systemName: "brain.head.profile")
-                    .font(.title3)
-                    .foregroundColor(.accentColor)
-                    .frame(width: 28)
-            } else {
-                Spacer(minLength: 60)
-            }
-
-            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Text(message.role == .user ? "你" : "AI")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    if !message.isStreaming, message.tokenCount > 0 {
-                        Text("~\(message.tokenCount) tokens")
-                            .font(.caption2)
-                            .foregroundColor(.secondary.opacity(0.6))
-                    }
+        if message.role == .system, let results = message.searchResults, !results.isEmpty {
+            searchResultsView(results: results)
+        } else {
+            HStack(alignment: .top, spacing: 8) {
+                if message.role == .assistant {
+                    Image(systemName: "brain.head.profile")
+                        .font(.title3)
+                        .foregroundColor(.accentColor)
+                        .frame(width: 28)
+                } else {
+                    Spacer(minLength: 60)
                 }
 
-                if !message.images.isEmpty {
-                    ForEach(message.images) { img in
-                        if let data = StorageService.shared.loadImageData(at: img.localFilePath),
-                           let nsImage = NSImage(data: data) {
-                            Image(nsImage: nsImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxWidth: 256, maxHeight: 256)
-                                .cornerRadius(8)
-                                .padding(.bottom, 4)
+                VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Text(message.role == .user ? "你" : "AI")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        if !message.isStreaming, message.tokenCount > 0 {
+                            Text("~\(message.tokenCount) tokens")
+                                .font(.caption2)
+                                .foregroundColor(.secondary.opacity(0.6))
                         }
                     }
-                }
 
-                if message.hasReasoning {
-                    reasoningSection
-                }
-
-                if message.content.isEmpty && message.isStreaming {
-                    HStack(spacing: 4) {
-                        Circle().frame(width: 6, height: 6).opacity(0.4)
-                        Circle().frame(width: 6, height: 6).opacity(0.7)
-                        Circle().frame(width: 6, height: 6).opacity(1.0)
+                    if !message.images.isEmpty {
+                        ForEach(message.images) { img in
+                            if let data = StorageService.shared.loadImageData(at: img.localFilePath),
+                               let nsImage = NSImage(data: data) {
+                                Image(nsImage: nsImage)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxWidth: 256, maxHeight: 256)
+                                    .cornerRadius(8)
+                                    .padding(.bottom, 4)
+                            }
+                        }
                     }
-                    .foregroundColor(.accentColor)
-                } else if !message.content.isEmpty {
-                    markdownContent
+
+                    if message.hasReasoning {
+                        reasoningSection
+                    }
+
+                    if message.content.isEmpty && message.isStreaming {
+                        TypingIndicatorView()
+                            .padding(10)
+                    } else if !message.content.isEmpty {
+                        markdownContent
+                    }
+
+                    if message.role == .assistant, !message.extractedImageURLs.isEmpty {
+                        generatedImagesView
+                    }
+
+                    if !message.isStreaming, !message.content.isEmpty {
+                        actionButtons
+                    }
                 }
 
-                if message.role == .assistant, !message.extractedImageURLs.isEmpty {
-                    generatedImagesView
-                }
-
-                if !message.isStreaming, !message.content.isEmpty {
-                    actionButtons
+                if message.role == .user {
+                    Image(systemName: "person.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(.accentColor)
+                        .frame(width: 28)
+                } else {
+                    Spacer(minLength: 60)
                 }
             }
+            .padding(.horizontal)
+            .padding(.vertical, 4)
+        }
+    }
 
-            if message.role == .user {
-                Image(systemName: "person.circle.fill")
-                    .font(.title3)
+    func searchResultsView(results: [SearchResult]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "globe")
+                    .font(.caption)
                     .foregroundColor(.accentColor)
-                    .frame(width: 28)
-            } else {
-                Spacer(minLength: 60)
+                Text("联网搜索结果")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.accentColor.opacity(0.08))
+            .cornerRadius(8)
+
+            ForEach(Array(results.enumerated()), id: \.offset) { index, result in
+                Button {
+                    NSWorkspace.shared.open(result.url)
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 4) {
+                            Text("\(index + 1).")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text(result.title)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .lineLimit(2)
+                        }
+                        if !result.snippet.isEmpty {
+                            Text(result.snippet)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(3)
+                        }
+                        Text(result.url.absoluteString)
+                            .font(.caption2)
+                            .foregroundColor(.accentColor)
+                            .lineLimit(1)
+                    }
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(nsColor: .controlBackgroundColor))
+                    .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal)
@@ -128,6 +182,7 @@ struct MessageBubbleView: View {
                     .background(Color.secondary.opacity(0.05))
                     .cornerRadius(8)
                     .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -140,6 +195,7 @@ struct MessageBubbleView: View {
             .background(message.role == .user ? Color.accentColor : Color(nsColor: .controlBackgroundColor))
             .foregroundColor(message.role == .user ? .white : .primary)
             .cornerRadius(12)
+            .fixedSize(horizontal: false, vertical: true)
             .contextMenu {
                 Button("拷贝") {
                     NSPasteboard.general.clearContents()

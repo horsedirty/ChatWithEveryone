@@ -1,7 +1,11 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var viewModel = ChatViewModel()
+    @ObservedObject var viewModel: ChatViewModel
+
+    init(viewModel: ChatViewModel) {
+        self.viewModel = viewModel
+    }
 
     var body: some View {
         MainChatView(viewModel: viewModel)
@@ -10,8 +14,4 @@ struct ContentView: View {
                 viewModel.createNewSession()
             }
     }
-}
-
-#Preview {
-    ContentView()
 }

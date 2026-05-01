@@ -259,13 +259,55 @@ struct MainChatView: View {
 
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(spacing: 0) {
+                    VStack(spacing: 0) {
                         ForEach(viewModel.selectedSession?.messages ?? []) { msg in
                             MessageBubbleView(message: msg,
                                 onRegenerate: msg.role == .assistant ? { viewModel.regenerateMessage(after: msg.id) } : nil,
                                 onEdit: msg.role == .user ? { viewModel.editMessage(msg.id) } : nil,
                                 onUndo: msg.role == .user ? { viewModel.undoExchange(after: msg.id) } : nil)
                                 .id(msg.id)
+                        }
+
+                        if viewModel.isWebSearching {
+                            HStack(spacing: 8) {
+                                Spacer(minLength: 60)
+                                HStack(spacing: 6) {
+                                    Image(systemName: "globe")
+                                        .font(.caption)
+                                        .foregroundColor(.accentColor)
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                    Text("正在搜索...")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(10)
+                                .background(Color.accentColor.opacity(0.08))
+                                .cornerRadius(12)
+                                Spacer(minLength: 60)
+                            }
+                            .padding(.horizontal)
+                            .padding(.vertical, 4)
+                            .id("webSearching")
+                        }
+
+                        if viewModel.isSending, !viewModel.isWebSearching,
+                           viewModel.selectedSession?.messages.last?.role != .assistant || viewModel.selectedSession?.messages.last?.isStreaming == false {
+                            HStack(spacing: 8) {
+                                Image(systemName: "brain.head.profile")
+                                    .font(.title3)
+                                    .foregroundColor(.accentColor)
+                                    .frame(width: 28)
+                                TypingIndicatorView()
+                                .foregroundColor(.accentColor)
+                                .padding(10)
+                                .background(Color(nsColor: .controlBackgroundColor))
+                                .cornerRadius(12)
+                                Spacer(minLength: 60)
+                            }
+                            .padding(.horizontal)
+                            .padding(.vertical, 4)
+                            .id("aiLoading")
                         }
                     }
                     .padding(.vertical, 8)
@@ -278,6 +320,16 @@ struct MainChatView: View {
                 .onChange(of: viewModel.selectedSession?.messages.last?.content) { _, _ in
                     if let last = viewModel.selectedSession?.messages.last {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                    }
+                }
+                .onChange(of: viewModel.isWebSearching) { _, newValue in
+                    if newValue {
+                        withAnimation { proxy.scrollTo("webSearching", anchor: .bottom) }
+                    }
+                }
+                .onChange(of: viewModel.isSending) { _, newValue in
+                    if newValue, !viewModel.isWebSearching {
+                        withAnimation { proxy.scrollTo("aiLoading", anchor: .bottom) }
                     }
                 }
             }
@@ -352,13 +404,24 @@ struct MainChatView: View {
                     }
                     .buttonStyle(.plain)
                     .help("截取窗口")
+
+                    Button {
+                        viewModel.isWebSearchEnabled.toggle()
+                    } label: {
+                        Image(systemName: "globe")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(viewModel.isWebSearchEnabled ? .accentColor : .secondary)
+                    .help(viewModel.isWebSearchEnabled ? "已开启联网搜索" : "开启联网搜索")
                 }
 
-                ZStack(alignment: .leading) {
+                ZStack(alignment: .topLeading) {
                     if viewModel.inputText.isEmpty {
                         Text("输入消息... (Enter 发送, Shift+Enter 换行)")
+                            .font(.body)
                             .foregroundColor(.secondary)
-                            .padding(.horizontal, 8)
+                            .padding(.top, 8)
+                            .padding(.leading, 5)
                     }
                     TextEditor(text: $viewModel.inputText)
                         .font(.body)

@@ -87,7 +87,7 @@ struct FloatingChatView: View {
 
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(spacing: 0) {
+                    VStack(spacing: 0) {
                         if viewModel.selectedSession?.messages.isEmpty ?? true {
                             VStack(spacing: 12) {
                                 Image(systemName: "bubble.left.and.bubble.right")
@@ -103,24 +103,45 @@ struct FloatingChatView: View {
                             MessageBubbleView(message: msg)
                                 .id(msg.id)
                         }
-                        if viewModel.isSending {
+
+                        if viewModel.isWebSearching {
+                            HStack(spacing: 8) {
+                                Spacer(minLength: 60)
+                                HStack(spacing: 6) {
+                                    Image(systemName: "globe")
+                                        .font(.caption)
+                                        .foregroundColor(.accentColor)
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                    Text("正在搜索...")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(10)
+                                .background(Color.accentColor.opacity(0.08))
+                                .cornerRadius(12)
+                                Spacer(minLength: 60)
+                            }
+                            .padding(.horizontal)
+                            .padding(.vertical, 4)
+                            .id("webSearching")
+                        }
+
+                        if viewModel.isSending, !viewModel.isWebSearching,
+                           viewModel.selectedSession?.messages.last?.role != .assistant || viewModel.selectedSession?.messages.last?.isStreaming == false {
                             HStack {
                                 Image(systemName: "brain.head.profile")
                                     .font(.title3)
                                     .foregroundColor(.accentColor)
                                     .frame(width: 28)
-                                HStack(spacing: 4) {
-                                    Circle().frame(width: 6, height: 6).opacity(0.4)
-                                    Circle().frame(width: 6, height: 6).opacity(0.7)
-                                    Circle().frame(width: 6, height: 6).opacity(1.0)
-                                }
+                                TypingIndicatorView()
                                 .foregroundColor(.accentColor)
                                 .padding(10)
                                 Spacer(minLength: 60)
                             }
                             .padding(.horizontal)
                             .padding(.vertical, 4)
-                            .id("loading")
+                            .id("aiLoading")
                         }
                     }
                     .padding(.vertical, 8)
@@ -130,9 +151,14 @@ struct FloatingChatView: View {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
                 }
-                .onChange(of: viewModel.isSending) { _, newValue in
+                .onChange(of: viewModel.isWebSearching) { _, newValue in
                     if newValue {
-                        withAnimation { proxy.scrollTo("loading", anchor: .bottom) }
+                        withAnimation { proxy.scrollTo("webSearching", anchor: .bottom) }
+                    }
+                }
+                .onChange(of: viewModel.isSending) { _, newValue in
+                    if newValue, !viewModel.isWebSearching {
+                        withAnimation { proxy.scrollTo("aiLoading", anchor: .bottom) }
                     }
                 }
                 .onChange(of: viewModel.selectedSession?.messages.last?.content) { _, _ in
@@ -208,13 +234,25 @@ struct FloatingChatView: View {
                     }
                     .buttonStyle(.plain)
                     .help("截取窗口")
+
+                    Button {
+                        viewModel.isWebSearchEnabled.toggle()
+                    } label: {
+                        Image(systemName: "globe")
+                            .font(.body)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(viewModel.isWebSearchEnabled ? .accentColor : .secondary)
+                    .help(viewModel.isWebSearchEnabled ? "已开启联网搜索" : "开启联网搜索")
                 }
 
-                ZStack(alignment: .leading) {
+                ZStack(alignment: .topLeading) {
                     if viewModel.inputText.isEmpty {
                         Text("输入消息...")
+                            .font(.body)
                             .foregroundColor(.secondary)
-                            .padding(.horizontal, 8)
+                            .padding(.top, 8)
+                            .padding(.leading, 5)
                     }
                     TextEditor(text: $viewModel.inputText)
                         .font(.body)

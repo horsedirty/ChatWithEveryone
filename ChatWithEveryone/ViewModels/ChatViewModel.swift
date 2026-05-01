@@ -15,6 +15,8 @@ final class ChatViewModel: ObservableObject {
     @Published var attachedFileNames: [String] = []
     @Published var showSettings = false
     @Published var showScreenCapturePicker = false
+    @Published var isWebSearchEnabled = false
+    @Published var isWebSearching = false
 
     var selectedSession: ChatSession? {
         sessions.first(where: { $0.id == selectedSessionId })
@@ -183,6 +185,11 @@ final class ChatViewModel: ObservableObject {
             return
         }
 
+        if isWebSearchEnabled {
+            performWebSearchAndSend(provider: provider, model: model, userText: text, userImages: imagesToSend)
+            return
+        }
+
         guard let index = sessions.firstIndex(where: { $0.id == selectedSessionId }) else {
             let newSession = ChatSession(title: "新对话", providerId: provider.id)
             sessions.insert(newSession, at: 0)
@@ -243,6 +250,45 @@ final class ChatViewModel: ObservableObject {
                 }
             }
         )
+    }
+
+    private func performWebSearchAndSend(provider: APIProvider, model: String, userText: String, userImages: [ImageAttachment]) {
+        isSending = true
+        isWebSearching = true
+        errorMessage = nil
+
+        let sessionIndex: Int
+        if let idx = sessions.firstIndex(where: { $0.id == selectedSessionId }) {
+            sessionIndex = idx
+        } else {
+            let newSession = ChatSession(title: "新对话", providerId: provider.id)
+            sessions.insert(newSession, at: 0)
+            selectedSessionId = newSession.id
+            sessionIndex = 0
+        }
+
+        let userMsg = Message.user(userText, images: userImages)
+        sessions[sessionIndex].addMessage(userMsg)
+        save()
+
+        Task {
+            let results = await WebSearchService.shared.search(query: userText)
+
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                guard self.sessions.indices.contains(sessionIndex) else { return }
+
+                self.isWebSearching = false
+
+                if !results.isEmpty {
+                    let sysMsg = Message.searchResult(results)
+                    self.sessions[sessionIndex].addMessage(sysMsg)
+                    self.save()
+                }
+
+                self.performSend(provider: provider, sessionIndex: sessionIndex, userImages: userImages)
+            }
+        }
     }
 
     private func performImageGeneration(provider: APIProvider, model: String, prompt: String, userImages: [ImageAttachment]) {
