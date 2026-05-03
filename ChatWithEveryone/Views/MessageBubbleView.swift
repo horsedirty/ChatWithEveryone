@@ -1,6 +1,7 @@
 import SwiftUI
 import Textual
 import UniformTypeIdentifiers
+import AppKit
 
 struct MessageBubbleView: View {
     let message: Message
@@ -8,6 +9,7 @@ struct MessageBubbleView: View {
     var onEdit: (() -> Void)?
     var onUndo: (() -> Void)?
     @State private var showReasoning = false
+    @State private var copiedCodeId: UUID?
 
     var body: some View {
         if message.role == .system, let results = message.searchResults, !results.isEmpty {
@@ -188,6 +190,16 @@ struct MessageBubbleView: View {
     }
 
     var markdownContent: some View {
+        Group {
+            if message.codeBlocks.isEmpty {
+                plainMarkdownContent
+            } else {
+                segmentedMarkdownContent
+            }
+        }
+    }
+
+    var plainMarkdownContent: some View {
         StructuredText(markdown: message.content)
             .textual.textSelection(.enabled)
             .textual.structuredTextStyle(.default)
@@ -215,6 +227,112 @@ struct MessageBubbleView: View {
                     }
                 }
             }
+    }
+
+    var segmentedMarkdownContent: some View {
+        let codeBlocks = message.codeBlocks
+        let textSegments = message.contentSegmentsWithoutCodeBlocks()
+        let maxCount = max(textSegments.count, codeBlocks.count)
+
+        return VStack(alignment: .leading, spacing: 0) {
+            ForEach(0..<maxCount, id: \.self) { index in
+                if index < textSegments.count {
+                    let seg = textSegments[index]
+                    if !seg.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        StructuredText(markdown: seg)
+                            .textual.textSelection(.enabled)
+                            .textual.structuredTextStyle(.default)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 4)
+                    }
+                }
+                if index < codeBlocks.count {
+                    let block = codeBlocks[index]
+                    codeBlockView(block: block)
+                        .padding(.vertical, 4)
+                }
+            }
+        }
+        .padding(10)
+        .background(message.role == .user ? Color.accentColor : Color(nsColor: .controlBackgroundColor))
+        .foregroundColor(message.role == .user ? .white : .primary)
+        .cornerRadius(12)
+        .fixedSize(horizontal: false, vertical: true)
+        .contextMenu {
+            Button("拷贝全部") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(message.content, forType: .string)
+            }
+            if !codeBlocks.isEmpty {
+                Divider()
+                ForEach(Array(codeBlocks.enumerated()), id: \.offset) { idx, block in
+                    let label = block.language.map { "\($0) 代码 #\(idx + 1)" } ?? "代码 #\(idx + 1)"
+                    Button("拷贝 \(label)") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(block.code, forType: .string)
+                    }
+                }
+            }
+            if !message.extractedImageURLs.isEmpty {
+                Divider()
+                ForEach(Array(message.extractedImageURLs.enumerated()), id: \.offset) { _, url in
+                    Button("保存图片: \(url.lastPathComponent)") {
+                        saveImage(from: url)
+                    }
+                }
+                Button("保存全部图片") {
+                    for url in message.extractedImageURLs {
+                        saveImage(from: url)
+                    }
+                }
+            }
+        }
+    }
+
+    func codeBlockView(block: Message.CodeBlock) -> some View {
+        VStack(alignment: .trailing, spacing: 0) {
+            HStack(spacing: 6) {
+                if let lang = block.language {
+                    Text(lang)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 10)
+                        .padding(.vertical, 3)
+                }
+                Spacer()
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(block.code, forType: .string)
+                    copiedCodeId = UUID()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        copiedCodeId = nil
+                    }
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: copiedCodeId != nil ? "checkmark" : "doc.on.doc")
+                            .font(.system(size: 10))
+                        Text(copiedCodeId != nil ? "已复制" : "复制")
+                            .font(.system(size: 10))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+            }
+            .background(Color.secondary.opacity(0.08))
+
+            StructuredText(markdown: "```\(block.language ?? "")\n\(block.code)\n```")
+                .textual.textSelection(.enabled)
+                .textual.structuredTextStyle(.default)
+                .padding(10)
+        }
+        .background(Color(nsColor: .textBackgroundColor))
+        .cornerRadius(6)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+        )
     }
 
     var generatedImagesView: some View {

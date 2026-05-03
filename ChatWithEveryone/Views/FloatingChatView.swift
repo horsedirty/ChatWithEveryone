@@ -9,6 +9,7 @@ struct FloatingChatView: View {
 
     @State private var showFileImporter = false
     @State private var showScreenCaptureSheet = false
+    @State private var enterPressedOnce = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -248,7 +249,7 @@ struct FloatingChatView: View {
 
                 ZStack(alignment: .topLeading) {
                     if viewModel.inputText.isEmpty {
-                        Text("输入消息...")
+                        Text("输入消息... (双击Enter 发送)")
                             .font(.body)
                             .foregroundColor(.secondary)
                             .padding(.top, 8)
@@ -269,13 +270,18 @@ struct FloatingChatView: View {
                 )
 
                 Button {
-                    viewModel.sendMessage()
+                    if viewModel.isSending {
+                        viewModel.cancelStreaming()
+                    } else {
+                        viewModel.sendMessage()
+                    }
                 } label: {
                     Image(systemName: viewModel.isSending ? "stop.circle.fill" : "arrow.up.circle.fill")
                         .font(.title3)
+                        .foregroundColor(viewModel.isSending ? .red : .accentColor)
                 }
                 .buttonStyle(.plain)
-                .disabled(viewModel.isSending || (viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && viewModel.attachedImages.isEmpty))
+                .disabled(!viewModel.isSending && viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && viewModel.attachedImages.isEmpty)
             }
             .padding(8)
         }
@@ -307,10 +313,19 @@ struct FloatingChatView: View {
     private func handleEnterKey() -> KeyPress.Result {
         let flags = NSApp.currentEvent?.modifierFlags
         if flags?.contains(.shift) == true {
+            enterPressedOnce = false
             return .ignored
         }
-        viewModel.sendMessage()
-        return .handled
+        if enterPressedOnce {
+            enterPressedOnce = false
+            viewModel.sendMessage()
+            return .handled
+        }
+        enterPressedOnce = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak viewModel] in
+            enterPressedOnce = false
+        }
+        return .ignored
     }
 
     var contextProgressView: some View {

@@ -38,6 +38,49 @@ struct Message: Identifiable, Codable, Equatable {
         }
     }
 
+    struct CodeBlock {
+        public let language: String?
+        public let code: String
+    }
+
+    var codeBlocks: [CodeBlock] {
+        let pattern = "```(\\w+)?\\s*\\n([\\s\\S]*?)\\n```"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+        let range = NSRange(content.startIndex..., in: content)
+        return regex.matches(in: content, range: range).compactMap { match in
+            guard match.numberOfRanges >= 3,
+                  let codeRange = Range(match.range(at: 2), in: content) else { return nil }
+            let lang: String? = {
+                guard match.numberOfRanges > 1,
+                      let langRange = Range(match.range(at: 1), in: content) else { return nil }
+                let s = String(content[langRange])
+                return s.isEmpty ? nil : s
+            }()
+            return CodeBlock(language: lang, code: String(content[codeRange]))
+        }
+    }
+
+    func contentSegmentsWithoutCodeBlocks() -> [String] {
+        let pattern = "```(?:\\w+)?\\s*\\n[\\s\\S]*?\\n```"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [content] }
+        let range = NSRange(content.startIndex..., in: content)
+        let matches = regex.matches(in: content, range: range)
+        var results: [String] = []
+        var lastEnd = content.startIndex
+        for match in matches {
+            if let r = Range(match.range, in: content) {
+                if lastEnd < r.lowerBound {
+                    results.append(String(content[lastEnd..<r.lowerBound]))
+                }
+                lastEnd = r.upperBound
+            }
+        }
+        if lastEnd < content.endIndex {
+            results.append(String(content[lastEnd..<content.endIndex]))
+        }
+        return results.isEmpty && !content.isEmpty ? [content] : results
+    }
+
     var tokenCount: Int {
         var count = 0
         for ch in content {

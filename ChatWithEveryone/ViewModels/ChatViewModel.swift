@@ -352,6 +352,20 @@ final class ChatViewModel: ObservableObject {
         isSending = false
     }
 
+    func cancelStreaming() {
+        APIService.shared.cancelStream()
+        if let sessionId = selectedSessionId,
+           let index = sessions.firstIndex(where: { $0.id == sessionId }) {
+            sessions[index].finishLastAssistantStreaming()
+            if let lastMsg = sessions[index].messages.last, lastMsg.role == .assistant {
+                sessions[index].messages[sessions[index].messages.count - 1].isStreaming = false
+            }
+        }
+        isSending = false
+        isWebSearching = false
+        save()
+    }
+
     func resetError() {
         errorMessage = nil
     }

@@ -57,12 +57,18 @@ final class APIService: @unchecked Sendable {
     static let shared = APIService()
     private let session: URLSession
     private let decoder = JSONDecoder()
+    private var streamTask: Task<Void, Never>?
 
     private init() {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 120
         config.timeoutIntervalForResource = 300
         session = URLSession(configuration: config)
+    }
+
+    func cancelStream() {
+        streamTask?.cancel()
+        streamTask = nil
     }
 
     func sendMessage(
@@ -115,7 +121,8 @@ final class APIService: @unchecked Sendable {
         onChunk: (@MainActor @Sendable (String) -> Void)?,
         onComplete: (@MainActor @Sendable (Result<String, APIError>) -> Void)?
     ) {
-        Task {
+        streamTask?.cancel()
+        streamTask = Task {
             do {
                 let (bytes, response) = try await session.bytes(for: request)
 
@@ -138,6 +145,7 @@ final class APIService: @unchecked Sendable {
                 var streamedContent = false
 
                 for try await line in bytes.lines {
+                    try Task.checkCancellation()
                     guard line.hasPrefix("data: ") else { continue }
                     let jsonString = String(line.dropFirst(6))
                     if jsonString == "[DONE]" { break }
@@ -158,11 +166,14 @@ final class APIService: @unchecked Sendable {
                     }
                 }
 
+                try Task.checkCancellation()
                 if !streamedContent && fullContent.isEmpty {
                     await onComplete?(.failure(.streamError("空响应")))
                 } else {
                     await onComplete?(.success(fullContent))
                 }
+            } catch is CancellationError {
+                await onComplete?(.failure(.streamError("已取消")))
             } catch {
                 await onComplete?(.failure(.networkError(error)))
             }
