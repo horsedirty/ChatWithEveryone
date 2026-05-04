@@ -1,8 +1,14 @@
-<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-  <channel>
-    <title>ChatWithEveryone</title>
-    <description>ChatWithEveryone 更新</description>
-    <language>zh</language>
-  </channel>
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>ChatWithEveryone</title>
+        <item>
+            <title>1.1</title>
+            <pubDate>Mon, 04 May 2026 22:27:38 +0800</pubDate>
+            <sparkle:version>100</sparkle:version>
+            <sparkle:shortVersionString>1.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.4</sparkle:minimumSystemVersion>
+            <enclosure url="https://raw.githubusercontent.com/horsedirty/ChatWithEveryone/main/ChatWithEveryone-v1.1.0.dmg" length="8208127" type="application/octet-stream" sparkle:edSignature="BaERwRGN1eGfForZdBZSMWsaaHSSwlMBMOrVuwM0+p1abJHXkGodseVHQMpps3T/Vnhn+oYaQQgyZ8W3egitDQ=="/>
+        </item>
+    </channel>
 </rss>
