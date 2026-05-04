@@ -9,7 +9,7 @@ struct ScreenCapturePickerView: View {
         VStack(spacing: 0) {
             HStack {
                 Text("选择要截取的窗口")
-                    .font(.headline)
+                    .font(.songtiTimes(size: 13, weight: .semibold))
                 Spacer()
                 Button("取消") { dismiss() }
             }
@@ -34,7 +34,7 @@ struct ScreenCapturePickerView: View {
                             Text(window.title.isEmpty ? "\(window.appName) - 未命名窗口" : window.title)
                                 .lineLimit(1)
                             Text(window.appName)
-                                .font(.caption)
+                                .font(.songtiTimes(size: 10))
                                 .foregroundColor(.secondary)
                         }
                     }

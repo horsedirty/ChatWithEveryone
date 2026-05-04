@@ -18,7 +18,7 @@ struct MessageBubbleView: View {
             HStack(alignment: .top, spacing: 8) {
                 if message.role == .assistant {
                     Image(systemName: "brain.head.profile")
-                        .font(.title3)
+                        .font(.songtiTimes(size: 20))
                         .foregroundColor(.accentColor)
                         .frame(width: 28)
                 } else {
@@ -28,12 +28,12 @@ struct MessageBubbleView: View {
                 VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 6) {
                     HStack(spacing: 6) {
                         Text(message.role == .user ? "你" : "AI")
-                            .font(.caption)
+                            .font(.songtiTimes(size: 10))
                             .foregroundColor(.secondary)
 
                         if !message.isStreaming, message.tokenCount > 0 {
                             Text("~\(message.tokenCount) tokens")
-                                .font(.caption2)
+                                .font(.songtiTimes(size: 9))
                                 .foregroundColor(.secondary.opacity(0.6))
                         }
                     }
@@ -74,7 +74,7 @@ struct MessageBubbleView: View {
 
                 if message.role == .user {
                     Image(systemName: "person.circle.fill")
-                        .font(.title3)
+                        .font(.songtiTimes(size: 20))
                         .foregroundColor(.accentColor)
                         .frame(width: 28)
                 } else {
@@ -90,11 +90,10 @@ struct MessageBubbleView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: "globe")
-                    .font(.caption)
+                    .font(.songtiTimes(size: 10))
                     .foregroundColor(.accentColor)
                 Text("联网搜索结果")
-                    .font(.caption)
-                    .fontWeight(.medium)
+                    .font(.songtiTimes(size: 10, weight: .medium))
                     .foregroundColor(.secondary)
                 Spacer(minLength: 0)
             }
@@ -110,21 +109,20 @@ struct MessageBubbleView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 4) {
                             Text("\(index + 1).")
-                                .font(.caption2)
+                                .font(.songtiTimes(size: 9))
                                 .foregroundColor(.secondary)
                             Text(result.title)
-                                .font(.subheadline)
-                                .fontWeight(.medium)
+                                .font(.songtiTimes(size: 13, weight: .medium))
                                 .lineLimit(2)
                         }
                         if !result.snippet.isEmpty {
                             Text(result.snippet)
-                                .font(.caption)
+                                .font(.songtiTimes(size: 10))
                                 .foregroundColor(.secondary)
                                 .lineLimit(3)
                         }
                         Text(result.url.absoluteString)
-                            .font(.caption2)
+                            .font(.songtiTimes(size: 9))
                             .foregroundColor(.accentColor)
                             .lineLimit(1)
                     }
@@ -149,16 +147,16 @@ struct MessageBubbleView: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: showReasoning ? "chevron.down" : "chevron.right")
-                        .font(.caption)
+                        .font(.songtiTimes(size: 10))
                     Image(systemName: "brain")
-                        .font(.caption)
+                        .font(.songtiTimes(size: 10))
                     Text("思考过程")
-                        .font(.caption)
+                        .font(.songtiTimes(size: 10))
                     if let start = message.thinkingStartTime, !message.isStreaming {
                         let duration = Int(Date().timeIntervalSince(start))
                         if duration > 0 {
                             Text("(\(duration)s)")
-                                .font(.caption2)
+                                .font(.songtiTimes(size: 9))
                                 .foregroundColor(.secondary)
                         }
                     }
@@ -177,8 +175,9 @@ struct MessageBubbleView: View {
             .buttonStyle(.plain)
 
             if showReasoning {
-                InlineText(markdown: message.reasoningContent)
+                InlineText(markdown: normalizeMathDelimiters(message.reasoningContent), syntaxExtensions: [.math])
                     .textual.textSelection(.enabled)
+                    .font(.songtiTimes(size: 13))
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.secondary.opacity(0.05))
@@ -199,10 +198,52 @@ struct MessageBubbleView: View {
         }
     }
 
+    private func normalizeMathDelimiters(_ markdown: String) -> String {
+        var result = markdown
+
+        // Step 1: convert alternative LaTeX block delimiters to standard $$...$$
+        result = result.replacingOccurrences(of: "\\[", with: "$$")
+        result = result.replacingOccurrences(of: "\\]", with: "$$")
+        result = result.replacingOccurrences(of: "\\begin{equation}", with: "$$")
+        result = result.replacingOccurrences(of: "\\end{equation}", with: "$$")
+        result = result.replacingOccurrences(of: "\\begin{align}", with: "$$")
+        result = result.replacingOccurrences(of: "\\end{align}", with: "$$")
+        result = result.replacingOccurrences(of: "\\begin{aligned}", with: "$$")
+        result = result.replacingOccurrences(of: "\\end{aligned}", with: "$$")
+
+        // Step 2: convert $$...$$ block math to ```math code blocks.  Textual
+        // handles ```math blocks at the block level (MathCodeBlock), which does
+        // not get split by paragraph boundaries.  The PatternProcessor, in
+        // contrast, tokenizes each AttributedString run independently and cannot
+        // detect $$ blocks that span run (paragraph) boundaries — or block math
+        // at all in some Swift Regex / Markdown parser configurations.
+        if let blockRegex = try? NSRegularExpression(pattern: "(?s)\\$\\$(.+?)\\$\\$") {
+            let nsRange = NSRange(result.startIndex..., in: result)
+            for match in blockRegex.matches(in: result, range: nsRange).reversed() {
+                guard match.numberOfRanges >= 2,
+                      let fullRange = Range(match.range, in: result),
+                      let contentRange = Range(match.range(at: 1), in: result) else { continue }
+                var content = String(result[contentRange])
+                // Collapse blank lines so the entire formula stays in one code block
+                while content.contains("\n\n") {
+                    content = content.replacingOccurrences(of: "\n\n", with: "\n")
+                }
+                content = content.trimmingCharacters(in: .whitespacesAndNewlines)
+                result.replaceSubrange(fullRange, with: "\n```math\n\(content)\n```\n")
+            }
+        }
+
+        // Step 3: convert alternative LaTeX inline delimiters to $...$
+        result = result.replacingOccurrences(of: "\\(", with: "$")
+        result = result.replacingOccurrences(of: "\\)", with: "$")
+        return result
+    }
+
     var plainMarkdownContent: some View {
-        StructuredText(markdown: message.content)
+        StructuredText(markdown: normalizeMathDelimiters(message.content), syntaxExtensions: [.math])
             .textual.textSelection(.enabled)
             .textual.structuredTextStyle(.default)
+            .font(.songtiTimes(size: 13))
             .padding(10)
             .background(message.role == .user ? Color.accentColor : Color(nsColor: .controlBackgroundColor))
             .foregroundColor(message.role == .user ? .white : .primary)
@@ -239,9 +280,10 @@ struct MessageBubbleView: View {
                 if index < textSegments.count {
                     let seg = textSegments[index]
                     if !seg.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        StructuredText(markdown: seg)
+                        StructuredText(markdown: normalizeMathDelimiters(seg), syntaxExtensions: [.math])
                             .textual.textSelection(.enabled)
                             .textual.structuredTextStyle(.default)
+                            .font(.songtiTimes(size: 13))
                             .padding(.horizontal, 4)
                             .padding(.vertical, 4)
                     }
@@ -294,7 +336,7 @@ struct MessageBubbleView: View {
             HStack(spacing: 6) {
                 if let lang = block.language {
                     Text(lang)
-                        .font(.caption)
+                        .font(.songtiTimes(size: 10))
                         .foregroundColor(.secondary)
                         .padding(.leading, 10)
                         .padding(.vertical, 3)
@@ -310,9 +352,9 @@ struct MessageBubbleView: View {
                 } label: {
                     HStack(spacing: 3) {
                         Image(systemName: copiedCodeId != nil ? "checkmark" : "doc.on.doc")
-                            .font(.system(size: 10))
+                            .font(.songtiTimes(size: 10))
                         Text(copiedCodeId != nil ? "已复制" : "复制")
-                            .font(.system(size: 10))
+                            .font(.songtiTimes(size: 10))
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
@@ -322,7 +364,7 @@ struct MessageBubbleView: View {
             }
             .background(Color.secondary.opacity(0.08))
 
-            StructuredText(markdown: "```\(block.language ?? "")\n\(block.code)\n```")
+            StructuredText(markdown: "```\(block.language ?? "")\n\(block.code)\n```", syntaxExtensions: [.math])
                 .textual.textSelection(.enabled)
                 .textual.structuredTextStyle(.default)
                 .padding(10)
@@ -350,10 +392,10 @@ struct MessageBubbleView: View {
                         case .failure:
                             VStack(spacing: 4) {
                                 Image(systemName: "photo.badge.exclamationmark")
-                                    .font(.title2)
+                                    .font(.songtiTimes(size: 22))
                                     .foregroundColor(.secondary)
                                 Text("加载失败")
-                                    .font(.caption2)
+                                    .font(.songtiTimes(size: 9))
                                     .foregroundColor(.secondary)
                             }
                             .frame(width: 200, height: 120)
@@ -372,7 +414,7 @@ struct MessageBubbleView: View {
                         saveImage(from: url)
                     } label: {
                         Image(systemName: "square.and.arrow.down")
-                            .font(.caption)
+                            .font(.songtiTimes(size: 10))
                     }
                     .buttonStyle(.plain)
                     .help("保存图片")
@@ -390,9 +432,9 @@ struct MessageBubbleView: View {
                 } label: {
                     HStack(spacing: 2) {
                         Image(systemName: "arrow.clockwise")
-                            .font(.caption2)
+                            .font(.songtiTimes(size: 9))
                         Text("重新生成")
-                            .font(.caption2)
+                            .font(.songtiTimes(size: 9))
                     }
                 }
                 .buttonStyle(.plain)
@@ -407,9 +449,9 @@ struct MessageBubbleView: View {
                 } label: {
                     HStack(spacing: 2) {
                         Image(systemName: "pencil")
-                            .font(.caption2)
+                            .font(.songtiTimes(size: 9))
                         Text("编辑")
-                            .font(.caption2)
+                            .font(.songtiTimes(size: 9))
                     }
                 }
                 .buttonStyle(.plain)
@@ -424,9 +466,9 @@ struct MessageBubbleView: View {
                 } label: {
                     HStack(spacing: 2) {
                         Image(systemName: "arrow.uturn.backward")
-                            .font(.caption2)
+                            .font(.songtiTimes(size: 9))
                         Text("撤销")
-                            .font(.caption2)
+                            .font(.songtiTimes(size: 9))
                     }
                 }
                 .buttonStyle(.plain)

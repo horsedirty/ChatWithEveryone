@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F7447DA52FA8D06B009C616A /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = F7447DA42FA8D06B009C616A /* Sparkle */; };
 		F77FDB332FA3AFF100F1D049 /* Textual in Frameworks */ = {isa = PBXBuildFile; productRef = F77FDB322FA3AFF100F1D049 /* Textual */; };
 /* End PBXBuildFile section */
 
@@ -28,6 +29,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F77FDB332FA3AFF100F1D049 /* Textual in Frameworks */,
+				F7447DA52FA8D06B009C616A /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +73,7 @@
 			name = ChatWithEveryone;
 			packageProductDependencies = (
 				F77FDB322FA3AFF100F1D049 /* Textual */,
+				F7447DA42FA8D06B009C616A /* Sparkle */,
 			);
 			productName = ChatWithEveryone;
 			productReference = F7331CA02FA3A4A300476C1F /* ChatWithEveryone.app */;
@@ -102,6 +105,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				F77FDB312FA3AFF100F1D049 /* XCRemoteSwiftPackageReference "textual" */,
+				F7447DA32FA8D06B009C616A /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F7331CA12FA3A4A300476C1F /* Products */;
@@ -367,6 +371,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		F7447DA32FA8D06B009C616A /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.1;
+			};
+		};
 		F77FDB312FA3AFF100F1D049 /* XCRemoteSwiftPackageReference "textual" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/gonzalezreal/textual.git";
@@ -378,6 +390,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		F7447DA42FA8D06B009C616A /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F7447DA32FA8D06B009C616A /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
 		F77FDB322FA3AFF100F1D049 /* Textual */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = F77FDB312FA3AFF100F1D049 /* XCRemoteSwiftPackageReference "textual" */;

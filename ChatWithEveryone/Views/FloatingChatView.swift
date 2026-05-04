@@ -15,7 +15,7 @@ struct FloatingChatView: View {
         VStack(spacing: 0) {
             HStack {
                 Text("ChatWithEveryone")
-                    .font(.headline)
+                    .font(.songtiTimes(size: 13, weight: .semibold))
                 Spacer()
                 Button {
                     onOpenMainWindow?()
@@ -42,7 +42,7 @@ struct FloatingChatView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "cpu")
                         .foregroundColor(.secondary)
-                        .font(.caption)
+                        .font(.songtiTimes(size: 10))
                     Picker("模型", selection: Binding(
                         get: { viewModel.currentModel },
                         set: { viewModel.updateSessionModel($0) }
@@ -53,7 +53,7 @@ struct FloatingChatView: View {
                     }
                     .pickerStyle(.menu)
                     .labelsHidden()
-                    .font(.caption)
+                    .font(.songtiTimes(size: 10))
 
                     Divider()
                         .frame(height: 14)
@@ -61,7 +61,7 @@ struct FloatingChatView: View {
                     HStack(spacing: 2) {
                         Image(systemName: "chart.bar.doc.horizontal")
                             .foregroundColor(.secondary)
-                            .font(.system(size: 9))
+                            .font(.songtiTimes(size: 9))
                         Picker("上下文", selection: Binding(
                             get: { viewModel.selectedSession?.contextLength ?? 1000000 },
                             set: { viewModel.updateContextLength($0) }
@@ -78,7 +78,7 @@ struct FloatingChatView: View {
                         }
                         .pickerStyle(.menu)
                         .labelsHidden()
-                        .font(.system(size: 9))
+                        .font(.songtiTimes(size: 9))
                     }
                     Spacer()
                 }
@@ -92,7 +92,7 @@ struct FloatingChatView: View {
                         if viewModel.selectedSession?.messages.isEmpty ?? true {
                             VStack(spacing: 12) {
                                 Image(systemName: "bubble.left.and.bubble.right")
-                                    .font(.largeTitle)
+                                    .font(.songtiTimes(size: 26))
                                     .foregroundColor(.secondary)
                                 Text("开始对话")
                                     .foregroundColor(.secondary)
@@ -110,12 +110,12 @@ struct FloatingChatView: View {
                                 Spacer(minLength: 60)
                                 HStack(spacing: 6) {
                                     Image(systemName: "globe")
-                                        .font(.caption)
+                                        .font(.songtiTimes(size: 10))
                                         .foregroundColor(.accentColor)
                                     ProgressView()
                                         .scaleEffect(0.7)
                                     Text("正在搜索...")
-                                        .font(.caption)
+                                        .font(.songtiTimes(size: 10))
                                         .foregroundColor(.secondary)
                                 }
                                 .padding(10)
@@ -132,7 +132,7 @@ struct FloatingChatView: View {
                            viewModel.selectedSession?.messages.last?.role != .assistant || viewModel.selectedSession?.messages.last?.isStreaming == false {
                             HStack {
                                 Image(systemName: "brain.head.profile")
-                                    .font(.title3)
+                                    .font(.songtiTimes(size: 20))
                                     .foregroundColor(.accentColor)
                                     .frame(width: 28)
                                 TypingIndicatorView()
@@ -174,12 +174,12 @@ struct FloatingChatView: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.red)
                     Text(error)
-                        .font(.caption)
+                        .font(.songtiTimes(size: 10))
                         .foregroundColor(.red)
                         .lineLimit(2)
                     Spacer()
                     Button("忽略") { viewModel.resetError() }
-                        .font(.caption)
+                        .font(.songtiTimes(size: 10))
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 4)
@@ -196,9 +196,9 @@ struct FloatingChatView: View {
                         ForEach(viewModel.attachedFileNames, id: \.self) { name in
                             HStack(spacing: 4) {
                                 Image(systemName: "doc.text")
-                                    .font(.caption)
+                                    .font(.songtiTimes(size: 10))
                                 Text(name)
-                                    .font(.caption)
+                                    .font(.songtiTimes(size: 10))
                                     .lineLimit(1)
                             }
                             .padding(.horizontal, 8)
@@ -222,7 +222,7 @@ struct FloatingChatView: View {
                         showFileImporter = true
                     } label: {
                         Image(systemName: "doc.badge.plus")
-                            .font(.body)
+                            .font(.songtiTimes(size: 13))
                     }
                     .buttonStyle(.plain)
                     .help("添加图片/文件")
@@ -231,7 +231,7 @@ struct FloatingChatView: View {
                         showScreenCaptureSheet = true
                     } label: {
                         Image(systemName: "macwindow.and.cursorarrow")
-                            .font(.body)
+                            .font(.songtiTimes(size: 13))
                     }
                     .buttonStyle(.plain)
                     .help("截取窗口")
@@ -240,7 +240,7 @@ struct FloatingChatView: View {
                         viewModel.isWebSearchEnabled.toggle()
                     } label: {
                         Image(systemName: "globe")
-                            .font(.body)
+                            .font(.songtiTimes(size: 13))
                     }
                     .buttonStyle(.plain)
                     .foregroundColor(viewModel.isWebSearchEnabled ? .accentColor : .secondary)
@@ -250,13 +250,13 @@ struct FloatingChatView: View {
                 ZStack(alignment: .topLeading) {
                     if viewModel.inputText.isEmpty {
                         Text("输入消息... (双击Enter 发送)")
-                            .font(.body)
+                            .font(.songtiTimes(size: 13))
                             .foregroundColor(.secondary)
                             .padding(.top, 8)
                             .padding(.leading, 5)
                     }
                     TextEditor(text: $viewModel.inputText)
-                        .font(.body)
+                        .font(.songtiTimes(size: 13))
                         .scrollContentBackground(.hidden)
                         .frame(minHeight: 30, maxHeight: 100)
                         .fixedSize(horizontal: false, vertical: true)
@@ -277,7 +277,7 @@ struct FloatingChatView: View {
                     }
                 } label: {
                     Image(systemName: viewModel.isSending ? "stop.circle.fill" : "arrow.up.circle.fill")
-                        .font(.title3)
+                        .font(.songtiTimes(size: 20))
                         .foregroundColor(viewModel.isSending ? .red : .accentColor)
                 }
                 .buttonStyle(.plain)
@@ -336,7 +336,7 @@ struct FloatingChatView: View {
 
         return HStack(spacing: 6) {
             Image(systemName: "chart.bar.fill")
-                .font(.system(size: 9))
+                .font(.songtiTimes(size: 9))
                 .foregroundColor(fraction > 0.8 ? .orange : .secondary)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
@@ -351,7 +351,7 @@ struct FloatingChatView: View {
             }
             .frame(height: 4)
             Text(windowSize >= 1000000 ? "\(tokens)/\(windowSize/1000000)M" : "\(tokens)/\(windowSize/1000)k")
-                .font(.system(size: 9))
+                .font(.songtiTimes(size: 9))
                 .foregroundColor(.secondary)
                 .monospacedDigit()
         }

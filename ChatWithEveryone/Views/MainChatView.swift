@@ -32,7 +32,7 @@ struct MainChatView: View {
                     HStack(spacing: 4) {
                         TextField("标题", text: $editingTitle)
                             .textFieldStyle(.plain)
-                            .font(.body)
+                            .font(.songtiTimes(size: 13))
                             .onSubmit {
                                 viewModel.updateSessionTitle(session.id, title: editingTitle)
                                 editingSessionId = nil
@@ -59,9 +59,9 @@ struct MainChatView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(session.title)
                             .lineLimit(1)
-                            .font(.body)
+                            .font(.songtiTimes(size: 13))
                         Text(session.updatedAt, style: .date)
-                            .font(.caption)
+                            .font(.songtiTimes(size: 10))
                             .foregroundColor(.secondary)
                     }
                     .padding(.vertical, 4)
@@ -128,10 +128,10 @@ struct MainChatView: View {
     var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "bubble.left.and.bubble.right")
-                .font(.system(size: 48))
+                .font(.songtiTimes(size: 48))
                 .foregroundColor(.secondary)
             Text("选择或创建一个对话开始聊天")
-                .font(.title2)
+                .font(.songtiTimes(size: 22))
                 .foregroundColor(.secondary)
             Button("新建对话") {
                 viewModel.createNewSession()
@@ -144,7 +144,7 @@ struct MainChatView: View {
         HStack(spacing: 6) {
             Image(systemName: "server.rack")
                 .foregroundColor(.secondary)
-                .font(.caption)
+                .font(.songtiTimes(size: 10))
 
             Picker("服务商", selection: Binding(
                 get: { viewModel.activeProvider?.id ?? UUID() },
@@ -156,11 +156,11 @@ struct MainChatView: View {
             }
             .pickerStyle(.menu)
             .labelsHidden()
-            .font(.caption)
+            .font(.songtiTimes(size: 10))
 
             Image(systemName: "bubble.left.and.bubble.right")
                 .foregroundColor(.secondary)
-                .font(.caption)
+                .font(.songtiTimes(size: 10))
             Picker("模式", selection: Binding(
                 get: { viewModel.selectedSession?.chatMode ?? .chat },
                 set: { viewModel.updateChatMode($0) }
@@ -171,11 +171,11 @@ struct MainChatView: View {
             }
             .pickerStyle(.menu)
             .labelsHidden()
-            .font(.caption)
+            .font(.songtiTimes(size: 10))
 
             Image(systemName: "cpu")
                 .foregroundColor(.secondary)
-                .font(.caption)
+                .font(.songtiTimes(size: 10))
             Picker("模型", selection: Binding(
                 get: { viewModel.currentModel },
                 set: { viewModel.updateSessionModel($0) }
@@ -186,7 +186,7 @@ struct MainChatView: View {
             }
             .pickerStyle(.menu)
             .labelsHidden()
-            .font(.caption)
+            .font(.songtiTimes(size: 10))
 
             Divider()
                 .frame(height: 14)
@@ -194,7 +194,7 @@ struct MainChatView: View {
             HStack(spacing: 2) {
                 Image(systemName: "chart.bar.doc.horizontal")
                     .foregroundColor(.secondary)
-                    .font(.system(size: 9))
+                    .font(.songtiTimes(size: 9))
                 Picker("上下文", selection: Binding(
                     get: { viewModel.selectedSession?.contextLength ?? 1000000 },
                     set: { viewModel.updateContextLength($0) }
@@ -211,7 +211,7 @@ struct MainChatView: View {
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
-                .font(.system(size: 9))
+                .font(.songtiTimes(size: 9))
             }
 
             Spacer()
@@ -229,7 +229,7 @@ struct MainChatView: View {
 
         return HStack(spacing: 6) {
             Image(systemName: "chart.bar.fill")
-                .font(.system(size: 9))
+                .font(.songtiTimes(size: 9))
                 .foregroundColor(fraction > 0.8 ? .orange : .secondary)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
@@ -244,7 +244,7 @@ struct MainChatView: View {
             }
             .frame(height: 4)
             Text(windowSize >= 1000000 ? "\(tokens)/\(windowSize/1000000)M" : "\(tokens)/\(windowSize/1000)k")
-                .font(.system(size: 9))
+                .font(.songtiTimes(size: 9))
                 .foregroundColor(.secondary)
                 .monospacedDigit()
         }
@@ -274,12 +274,12 @@ struct MainChatView: View {
                                 Spacer(minLength: 60)
                                 HStack(spacing: 6) {
                                     Image(systemName: "globe")
-                                        .font(.caption)
+                                        .font(.songtiTimes(size: 10))
                                         .foregroundColor(.accentColor)
                                     ProgressView()
                                         .scaleEffect(0.7)
                                     Text("正在搜索...")
-                                        .font(.caption)
+                                        .font(.songtiTimes(size: 10))
                                         .foregroundColor(.secondary)
                                 }
                                 .padding(10)
@@ -296,7 +296,7 @@ struct MainChatView: View {
                            viewModel.selectedSession?.messages.last?.role != .assistant || viewModel.selectedSession?.messages.last?.isStreaming == false {
                             HStack(spacing: 8) {
                                 Image(systemName: "brain.head.profile")
-                                    .font(.title3)
+                                    .font(.songtiTimes(size: 20))
                                     .foregroundColor(.accentColor)
                                     .frame(width: 28)
                                 TypingIndicatorView()
@@ -340,11 +340,11 @@ struct MainChatView: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.red)
                     Text(error)
-                        .font(.caption)
+                        .font(.songtiTimes(size: 10))
                         .foregroundColor(.red)
                     Spacer()
                     Button("忽略") { viewModel.resetError() }
-                        .font(.caption)
+                        .font(.songtiTimes(size: 10))
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 6)
@@ -367,9 +367,9 @@ struct MainChatView: View {
                         ForEach(viewModel.attachedFileNames, id: \.self) { name in
                             HStack(spacing: 4) {
                                 Image(systemName: "doc.text")
-                                    .font(.caption)
+                                    .font(.songtiTimes(size: 10))
                                 Text(name)
-                                    .font(.caption)
+                                    .font(.songtiTimes(size: 10))
                                     .lineLimit(1)
                             }
                             .padding(.horizontal, 8)
@@ -419,13 +419,13 @@ struct MainChatView: View {
                 ZStack(alignment: .topLeading) {
                     if viewModel.inputText.isEmpty {
                         Text("输入消息... (双击Enter 发送, Shift+Enter 换行)")
-                            .font(.body)
+                            .font(.songtiTimes(size: 13))
                             .foregroundColor(.secondary)
                             .padding(.top, 8)
                             .padding(.leading, 5)
                     }
                     TextEditor(text: $viewModel.inputText)
-                        .font(.body)
+                        .font(.songtiTimes(size: 13))
                         .scrollContentBackground(.hidden)
                         .frame(minHeight: 36, maxHeight: 120)
                         .fixedSize(horizontal: false, vertical: true)
@@ -446,7 +446,7 @@ struct MainChatView: View {
                     }
                 } label: {
                     Image(systemName: viewModel.isSending ? "stop.circle.fill" : "arrow.up.circle.fill")
-                        .font(.title2)
+                        .font(.songtiTimes(size: 22))
                         .foregroundColor(viewModel.isSending ? .red : .accentColor)
                 }
                 .buttonStyle(.plain)

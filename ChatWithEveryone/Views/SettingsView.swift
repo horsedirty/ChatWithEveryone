@@ -18,7 +18,7 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             HStack {
                 Text("API 配置")
-                    .font(.headline)
+                    .font(.songtiTimes(size: 13, weight: .semibold))
                 Spacer()
                 Button("完成") { dismiss() }
             }
@@ -32,9 +32,9 @@ struct SettingsView: View {
                         HStack {
                             VStack(alignment: .leading) {
                                 Text(provider.name)
-                                    .font(.body)
+                                    .font(.songtiTimes(size: 13))
                                 Text("\(provider.providerType.rawValue) - \(provider.model)")
-                                    .font(.caption)
+                                    .font(.songtiTimes(size: 10))
                                     .foregroundColor(.secondary)
                             }
                             Spacer()
@@ -73,7 +73,7 @@ struct SettingsView: View {
                                 Text(type.rawValue)
                                 Spacer()
                                 Text(type.defaultModel)
-                                    .font(.caption)
+                                    .font(.songtiTimes(size: 10))
                                     .foregroundColor(.secondary)
                             }
                         }
@@ -111,7 +111,7 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             HStack {
                 Text(editingProvider == nil ? "添加提供商" : "编辑提供商")
-                    .font(.headline)
+                    .font(.songtiTimes(size: 13, weight: .semibold))
                 Spacer()
                 Button("取消") {
                     showingAddSheet = false
@@ -147,7 +147,7 @@ struct SettingsView: View {
                             ForEach(existing.customModels, id: \.self) { model in
                                 HStack {
                                     Text(model)
-                                        .font(.caption)
+                                        .font(.songtiTimes(size: 10))
                                     Spacer()
                                     Button {
                                         viewModel.removeCustomModel(from: existing.id, model: model)
@@ -162,7 +162,7 @@ struct SettingsView: View {
                             HStack {
                                 TextField("添加自定义模型", text: $newCustomModel)
                                     .textFieldStyle(.roundedBorder)
-                                    .font(.caption)
+                                    .font(.songtiTimes(size: 10))
                                 Button {
                                     viewModel.addCustomModel(to: existing.id, model: newCustomModel)
                                     editingProvider = viewModel.providers.first(where: { $0.id == existing.id })

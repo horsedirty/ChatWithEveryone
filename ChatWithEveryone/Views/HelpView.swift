@@ -4,8 +4,7 @@ struct HelpView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("使用说明")
-                .font(.title2)
-                .fontWeight(.bold)
+                .font(.songtiTimes(size: 22, weight: .bold))
 
             VStack(alignment: .leading, spacing: 12) {
                 HelpRow(shortcut: "⌘N", description: "新建对话")
@@ -43,8 +42,7 @@ private struct HelpRow: View {
         HStack(spacing: 8) {
             if !shortcut.isEmpty {
                 Text(shortcut)
-                    .font(.caption)
-                    .fontWeight(.medium)
+                    .font(.songtiTimes(size: 10, weight: .medium))
                     .monospaced()
                     .foregroundColor(.accentColor)
                     .padding(.horizontal, 6)
@@ -56,7 +54,7 @@ private struct HelpRow: View {
                 Spacer().frame(width: 100)
             }
             Text(description)
-                .font(.body)
+                .font(.songtiTimes(size: 13))
                 .foregroundColor(.primary)
         }
     }

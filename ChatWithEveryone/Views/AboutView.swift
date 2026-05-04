@@ -6,19 +6,18 @@ struct AboutView: View {
             Spacer().frame(height: 8)
 
             Image(systemName: "bubble.left.and.bubble.right.fill")
-                .font(.system(size: 48))
+                .font(.songtiTimes(size: 48))
                 .foregroundColor(.accentColor)
 
             Text("ChatWithEveryone")
-                .font(.title)
-                .fontWeight(.bold)
+                .font(.songtiTimes(size: 28, weight: .bold))
 
             Text("版本 1.0")
-                .font(.subheadline)
+                .font(.songtiTimes(size: 13))
                 .foregroundColor(.secondary)
 
             Text("一个简洁的 AI 聊天客户端，\n支持多模型切换、联网搜索、图片生成和屏幕截图对话。")
-                .font(.body)
+                .font(.songtiTimes(size: 13))
                 .foregroundColor(.primary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
