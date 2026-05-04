@@ -40,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         showMainWindow()
         setupHotKey()
         setupMenuCommands()
+        observeUpdateCheckNotification()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -53,6 +54,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     static func showMainWindow() {
         (NSApp.delegate as? AppDelegate)?.showMainWindow()
+    }
+
+    static func checkForUpdates() {
+        NotificationCenter.default.post(name: .didRequestUpdateCheck, object: nil)
+    }
+
+    private func observeUpdateCheckNotification() {
+        NotificationCenter.default.addObserver(
+            forName: .didRequestUpdateCheck,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.showMainWindow()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                self.updaterController.checkForUpdates(nil)
+            }
+        }
     }
 
     func showMainWindow() {
@@ -217,4 +236,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
 extension Notification.Name {
     static let createNewChatSession = Notification.Name("createNewChatSession")
+    static let didRequestUpdateCheck = Notification.Name("didRequestUpdateCheck")
 }

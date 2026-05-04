@@ -14,6 +14,13 @@ struct SettingsView: View {
     @State private var newCustomModel = ""
     @State private var showingAddSheet = false
 
+    private var versionString: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = info?["CFBundleVersion"] as? String ?? "0"
+        return "\(version) (\(build))"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -78,6 +85,19 @@ struct SettingsView: View {
                             }
                         }
                         .buttonStyle(.plain)
+                    }
+                }
+
+                Section("关于") {
+                    HStack {
+                        Text("当前版本")
+                        Spacer()
+                        Text(versionString)
+                            .foregroundColor(.secondary)
+                    }
+                    Button("检查更新…") {
+                        dismiss()
+                        NotificationCenter.default.post(name: .didRequestUpdateCheck, object: nil)
                     }
                 }
             }

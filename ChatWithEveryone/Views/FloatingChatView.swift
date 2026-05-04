@@ -10,6 +10,7 @@ struct FloatingChatView: View {
     @State private var showFileImporter = false
     @State private var showScreenCaptureSheet = false
     @State private var enterPressedOnce = false
+    @State private var shouldAutoScroll = true
 
     var body: some View {
         VStack(spacing: 0) {
@@ -147,23 +148,30 @@ struct FloatingChatView: View {
                     }
                     .padding(.vertical, 8)
                 }
+                .onScrollGeometryChange(for: Bool.self) { geometry in
+                    let maxOffsetY = max(geometry.contentSize.height - geometry.bounds.height, 0)
+                    return geometry.contentOffset.y >= maxOffsetY - 50
+                } action: { _, isNearBottom in
+                    shouldAutoScroll = isNearBottom
+                }
                 .onChange(of: viewModel.selectedSession?.messages.count) { _, _ in
-                    if let last = viewModel.selectedSession?.messages.last {
+                    if shouldAutoScroll, let last = viewModel.selectedSession?.messages.last {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
                 }
                 .onChange(of: viewModel.isWebSearching) { _, newValue in
-                    if newValue {
+                    if newValue, shouldAutoScroll {
                         withAnimation { proxy.scrollTo("webSearching", anchor: .bottom) }
                     }
                 }
                 .onChange(of: viewModel.isSending) { _, newValue in
                     if newValue, !viewModel.isWebSearching {
+                        shouldAutoScroll = true
                         withAnimation { proxy.scrollTo("aiLoading", anchor: .bottom) }
                     }
                 }
                 .onChange(of: viewModel.selectedSession?.messages.last?.content) { _, _ in
-                    if let last = viewModel.selectedSession?.messages.last {
+                    if shouldAutoScroll, let last = viewModel.selectedSession?.messages.last {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
                 }

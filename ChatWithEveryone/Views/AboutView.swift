@@ -1,6 +1,13 @@
 import SwiftUI
 
 struct AboutView: View {
+    private var versionString: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = info?["CFBundleVersion"] as? String ?? "0"
+        return "版本 \(version) (\(build))"
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             Spacer().frame(height: 8)
@@ -12,7 +19,7 @@ struct AboutView: View {
             Text("ChatWithEveryone")
                 .font(.songtiTimes(size: 28, weight: .bold))
 
-            Text("版本 1.0")
+            Text(versionString)
                 .font(.songtiTimes(size: 13))
                 .foregroundColor(.secondary)
 
