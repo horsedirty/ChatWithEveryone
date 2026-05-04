@@ -1,1 +1,4 @@
 Sparkle-for-Swift-Package-Manager/
+build/
+*.dmg
+updates/
