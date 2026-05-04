@@ -28,6 +28,7 @@ jobs:
             -configuration Release \
             -archivePath ./build/ChatWithEveryone.xcarchive \
             -allowProvisioningUpdates \
+            CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="-" \
             DEVELOPMENT_TEAM="" \
             MACOSX_DEPLOYMENT_TARGET=14.0 \
