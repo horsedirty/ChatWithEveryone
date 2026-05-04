@@ -3,12 +3,12 @@
     <channel>
         <title>ChatWithEveryone</title>
         <item>
-            <title>1.1</title>
-            <pubDate>Mon, 04 May 2026 23:53:51 +0800</pubDate>
+            <title>1.2</title>
+            <pubDate>Tue, 05 May 2026 00:18:49 +0800</pubDate>
             <sparkle:version>101</sparkle:version>
-            <sparkle:shortVersionString>1.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.4</sparkle:minimumSystemVersion>
-            <enclosure url="https://raw.githubusercontent.com/horsedirty/ChatWithEveryone/main/ChatWithEveryone-v1.2.0.dmg" length="8222193" type="application/octet-stream" sparkle:edSignature="wBJgLywUT3Alt2fZuNKVUVqRguHn6vPlEhAJFW4WzSDEznIs1YOXDNPWCETECVuV7ftql45XwWWWpghXpfWbCQ=="/>
+            <sparkle:shortVersionString>1.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/horsedirty/ChatWithEveryone/releases/download/v1.2.0/ChatWithEveryone-v1.2.0.dmg" length="8231263" type="application/octet-stream" sparkle:edSignature="iKPH9UUNOfPCRU7w95k0ySNnzXGJQTt2jqtngQeou/lxaT7mZhfJbQwothSq5ylF4u0d+rMRMjFXrl3joA7FDg=="/>
         </item>
     </channel>
 </rss>
