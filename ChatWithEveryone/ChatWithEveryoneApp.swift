@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Sparkle
 
 @main
 struct ChatWithEveryoneApp: App {
@@ -28,8 +29,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var mainViewModel: ChatViewModel?
     private var aboutWindow: NSWindow?
     private var helpWindow: NSWindow?
+    private var updaterController: SPUStandardUpdaterController!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        updaterController = SPUStandardUpdaterController(
+            startingUpdater: true,
+            updaterDelegate: nil,
+            userDriverDelegate: nil
+        )
         showMainWindow()
         setupHotKey()
         setupMenuCommands()
@@ -128,7 +135,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             )
             appMenu.insertItem(helpItem, at: 2)
 
-            appMenu.insertItem(.separator(), at: 3)
+            let updateItem = NSMenuItem(
+                title: "检查更新…",
+                action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)),
+                keyEquivalent: ""
+            )
+            updateItem.target = updaterController
+            appMenu.insertItem(updateItem, at: 3)
+
+            appMenu.insertItem(.separator(), at: 4)
         }
 
         // File menu: 新建对话

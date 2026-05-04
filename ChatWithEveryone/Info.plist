@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+    <key>SUFeedURL</key>
+    <string>https://raw.githubusercontent.com/horsedirty/ChatWithEveryone/main/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>SIWCy0V3ced3CSfWdN8qM6Qi/D7utt8v+/wJSCMO3GE=</string>
+</dict>
+</plist>
