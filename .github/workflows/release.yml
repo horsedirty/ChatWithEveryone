@@ -15,11 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: 'latest-stable'
-
       - name: Resolve SPM Dependencies
         run: |
           xcodebuild -resolvePackageDependencies \
@@ -33,20 +28,15 @@ jobs:
             -configuration Release \
             -archivePath ./build/ChatWithEveryone.xcarchive \
             -allowProvisioningUpdates \
+            CODE_SIGN_IDENTITY="-" \
+            DEVELOPMENT_TEAM="" \
+            MACOSX_DEPLOYMENT_TARGET=14.0 \
             archive
-
-      - name: Export App
-        run: |
-          xcodebuild -exportArchive \
-            -archivePath ./build/ChatWithEveryone.xcarchive \
-            -exportPath ./build/export \
-            -exportOptionsPlist ExportOptions.plist \
-            -allowProvisioningUpdates
 
       - name: Create DMG
         run: |
           mkdir -p ./build/dmg
-          cp -R ./build/export/ChatWithEveryone.app ./build/dmg/
+          cp -R ./build/ChatWithEveryone.xcarchive/Products/Applications/ChatWithEveryone.app ./build/dmg/
           ln -s /Applications ./build/dmg/Applications
           hdiutil create -volname "ChatWithEveryone" \
             -srcfolder ./build/dmg \
