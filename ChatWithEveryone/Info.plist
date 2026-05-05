@@ -6,6 +6,8 @@
     <true/>
     <key>SUFeedURL</key>
     <string>https://raw.githubusercontent.com/horsedirty/ChatWithEveryone/main/appcast.xml</string>
+    <key>SUEnableInstallerLauncherService</key>
+    <true/>
     <key>SUPublicEDKey</key>
     <string>SIWCy0V3ced3CSfWdN8qM6Qi/D7utt8v+/wJSCMO3GE=</string>
 </dict>
