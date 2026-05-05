@@ -424,27 +424,18 @@ struct MainChatView: View {
                     .help(viewModel.isWebSearchEnabled ? "已开启联网搜索" : "开启联网搜索")
                 }
 
-                ZStack(alignment: .topLeading) {
-                    if viewModel.inputText.isEmpty {
-                        Text("输入消息... (双击Enter 发送, Shift+Enter 换行)")
-                            .font(.songtiTimes(size: 13))
-                            .foregroundColor(.secondary)
-                            .padding(.top, 8)
-                            .padding(.leading, 5)
+                TextField("输入消息... (双击Enter 发送, Shift+Enter 换行)", text: $viewModel.inputText, axis: .vertical)
+                    .font(.songtiTimes(size: 13))
+                    .textFieldStyle(.plain)
+                    .lineLimit(1...6)
+                    .onKeyPress(.return) {
+                        handleEnterKey()
                     }
-                    TextEditor(text: $viewModel.inputText)
-                        .font(.songtiTimes(size: 13))
-                        .scrollContentBackground(.hidden)
-                        .frame(minHeight: 36, maxHeight: 120)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .onKeyPress(.return) {
-                            handleEnterKey()
-                        }
-                }
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                )
+                    .padding(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                    )
 
                 Button {
                     if viewModel.isSending {
